@@ -3,7 +3,7 @@ const canvas = document.querySelector('#ink');
 const context = canvas?.getContext('2d');
 if (context) {
   const scene = document.body.dataset.ink || 'home';
-  let width, height, progress = 0, target = 0, frame = 0;
+  let width, height, progress = 0, target = 0, frame = 0, elapsed = 0, lastTime = 0;
 
   function draw() {
     context.clearRect(0, 0, width, height);
@@ -43,16 +43,23 @@ if (context) {
     context.restore();
   }
 
-  function tick() {
-    progress += (target - progress) * .16;
-    if (Math.abs(target - progress) < .0005) progress = target;
+  function tick(now) {
+    const flowing = scene === 'home' && !reduced.matches;
+    if (flowing) {
+      elapsed += lastTime ? Math.min(now - lastTime, 64) : 0;
+      lastTime = now;
+      progress = .5 - .5 * Math.cos(elapsed / 6000);
+    } else {
+      progress += (target - progress) * .16;
+      if (Math.abs(target - progress) < .0005) progress = target;
+    }
     draw();
-    frame = progress === target ? 0 : requestAnimationFrame(tick);
+    frame = !document.hidden && (flowing || progress !== target) ? requestAnimationFrame(tick) : 0;
   }
 
   function update() {
-    target = reduced.matches ? 0 : Math.min(1, Math.max(0, scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight)));
-    if (!frame) frame = requestAnimationFrame(tick);
+    target = reduced.matches || scene === 'home' ? 0 : Math.min(1, Math.max(0, scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight)));
+    if (!frame && !document.hidden) frame = requestAnimationFrame(tick);
   }
 
   function resize() {
@@ -67,7 +74,12 @@ if (context) {
     update();
   }
 
-  addEventListener('scroll', update, { passive: true });
+  if (scene !== 'home') addEventListener('scroll', update, { passive: true });
+  document.addEventListener('visibilitychange', () => {
+    cancelAnimationFrame(frame);
+    frame = lastTime = 0;
+    update();
+  });
   addEventListener('resize', resize, { passive: true });
   reduced.addEventListener('change', resize);
   resize();
