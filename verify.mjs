@@ -26,7 +26,15 @@ try {
     await page.evaluate(() => document.fonts.ready);
     assert.equal(await page.locator('h1').innerText(), 'Janus Tsen');
     assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight * 1.5));
-    const start = await page.screenshot({ path: join(evidence, `${name}-start.png`) });
+    if (name !== 'reduced' && name !== 'no-js') {
+      assert.equal(await page.locator('.unveiling').count(), 1, 'First visit should unveil');
+      assert.equal(await page.locator('.home-content').evaluate(el => getComputedStyle(el).opacity), '0');
+      await page.waitForTimeout(350);
+      await page.screenshot({ path: join(evidence, `${name}-intro.png`) });
+      await page.locator('.unveiling').waitFor({ state: 'detached' });
+    } else assert.equal(await page.locator('.unveiling').count(), 0);
+    assert.equal(await page.locator('.home-content').evaluate(el => getComputedStyle(el).opacity), '1');
+    await page.screenshot({ path: join(evidence, `${name}-start.png`) });
     const canvasBefore = await page.locator('#ink').screenshot();
     const textBefore = await page.locator('.home-content').boundingBox();
     // Native scrolling is the real input; verify rendered pixels, not a progress variable.
@@ -45,6 +53,15 @@ try {
       await page.waitForURL(new URL(path, base).href);
       assert.equal(await page.locator('h1').innerText(), label);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+      await page.waitForTimeout(150);
+      const inkBefore = await page.locator('#ink').evaluate(el => el.toDataURL());
+      await page.screenshot({ path: join(evidence, `${name}-${label.toLowerCase()}-start.png`) });
+      await page.mouse.wheel(0, 700);
+      await page.waitForTimeout(850);
+      const inkAfter = await page.locator('#ink').evaluate(el => el.toDataURL());
+      if (name !== 'reduced' && name !== 'no-js') assert.notEqual(inkBefore, inkAfter, `${label}: rendered ink should move`);
+      else assert.equal(inkBefore, inkAfter, `${label}: fallback ink should stay static`);
+      await page.screenshot({ path: join(evidence, `${name}-${label.toLowerCase()}-scrolled.png`) });
       if (label === 'Building') {
         for (const id of ['verdnt', 'trus']) {
           await page.locator(`#${id} summary`).click();
@@ -56,13 +73,28 @@ try {
       await page.screenshot({ path: join(evidence, `${name}-${path.slice(0,-1)}.png`), fullPage: true });
       await page.getByRole('link', { name: 'Janus Tsen' }).click();
       await page.waitForURL(base);
+      assert.equal(await page.locator('.unveiling').count(), 0, 'Returning home must be immediate');
     }
     await page.keyboard.press('Tab');
     assert.ok(await page.evaluate(() => document.activeElement.tagName === 'A'));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     assert.deepEqual(errors, []);
-    results.push({ scenario: name, status: 'passed', pages: 4, scrollPixels: name === 'no-js' ? 'not applicable' : name === 'reduced' ? 'static' : 'changed', keyboardDetails: true, overflow: false, errors });
+    results.push({ scenario: name, status: 'passed', pages: 4, scrollPixels: name === 'no-js' ? 'not applicable' : name === 'reduced' ? 'static' : 'changed', keyboardDetails: true, intro: name === 'reduced' || name === 'no-js' ? 'bypassed' : 'once per tab', overflow: false, errors });
     await context.close();
+  }
+  for (const action of ['skip', 'keyboard', 'scroll', 'preference']) {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto(base, { waitUntil: 'networkidle' });
+    assert.equal(await page.locator('.unveiling').count(), 1);
+    if (action === 'skip') await page.getByRole('button', { name: 'Skip intro' }).click();
+    if (action === 'keyboard') await page.keyboard.press('Tab');
+    if (action === 'scroll') await page.mouse.wheel(0, 80);
+    if (action === 'preference') await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.locator('.unveiling').waitFor({ state: 'detached', timeout: 700 });
+    assert.equal(await page.locator('.home-content').evaluate(el => getComputedStyle(el).opacity), '1');
+    await context.close();
+    results.push({ introDismissal: action, status: 'passed' });
   }
   await writeFile(join(evidence, 'results.json'), JSON.stringify(results, null, 2));
   console.log(JSON.stringify(results, null, 2));

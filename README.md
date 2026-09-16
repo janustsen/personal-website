@@ -8,7 +8,7 @@ Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `node --check 
 
 ## Design and sources
 
-A short homepage links to Building, Experience, and About. Original canvas ink lines respond to native scrolling. Reduced-motion visitors get a static composition. Content and navigation work without JavaScript.
+A short homepage links to Building, Experience, and About. Each page has its own original canvas ink composition responding to native scrolling. A two-second homepage unveiling assembles an abstract workspace, then reveals the content; it plays once per tab and can be skipped immediately. Reduced-motion visitors get a static composition. Content and navigation work without JavaScript.
 
 Copy follows the user's professional positioning, with public evidence links beside the relevant work. The legacy Duna case-study page is identified as using Verdnt Labs' former name. Manrope is included under the SIL Open Font License in `dist/assets/manrope-license.txt`.
 

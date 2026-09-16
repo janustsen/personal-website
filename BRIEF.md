@@ -8,7 +8,8 @@ A professional portfolio spanning business judgment, product craft, and AI execu
 - Building: Verdnt Labs, Trus, and a brief AI working method. Native disclosures hold deeper project context.
 - Experience: concise professional and project entries with public evidence where available.
 - About: writing, humanities, and karate.
-- A decorative canvas field visibly bends over a short native scroll while homepage text stays still. No animation library or generated bitmap asset is needed.
+- Decorative canvas ink responds to scrolling on every page: the homepage ribbon, converging Building strands, flowing Experience tracks, and rotating About loops. Homepage text stays still.
+- A 2.1-second homepage opening draws and assembles an abstract workspace, referencing the idea-to-software work at Trus. It sweeps aside to reveal the content, runs once per tab, and ends immediately on skip, scrolling, keyboard input, or a reduced-motion preference. No animation library or generated bitmap is needed.
 - Soft white, charcoal, Manrope, generous space. Each inner page has an in-content home link and bottom navigation.
 - Phone composition is adjusted independently. Reduced motion leaves static ink; all content works without JavaScript.
 

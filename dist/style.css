@@ -8,3 +8,23 @@
 @media(prefers-reduced-motion:reduce){.home{height:100svh;min-height:580px}.home-stage{position:relative}.home-links span{transition:none}}
 @media(max-height:620px){.home-stage{padding-top:45px;padding-bottom:30px}.home-links{margin-top:25px}.contact-links{margin-top:22px}}
 @media print{#ink{display:none}.home{height:auto;min-height:0}.home-stage{height:auto;min-height:0;position:static}.reading-page{padding:0}.page-footer{display:none}}
+
+/* The reading surface stays quiet while ink moves at its edges. */
+.inner{min-height:120svh}.inner .reading-page{position:relative;z-index:1}
+.inner #ink{opacity:.45;mask-image:linear-gradient(90deg,transparent 18%,#0001 48%,#000 100%)}
+.unveiling{position:fixed;inset:0;z-index:5;display:grid;place-items:center;background:#fafbfc;animation:unveil 2.1s cubic-bezier(.65,0,.25,1) both}
+.unveiling svg{width:min(760px,100vw);height:auto;overflow:visible;stroke:#455963;stroke-width:1;animation:workspace-depart 2.1s cubic-bezier(.65,0,.25,1) both}
+.unveiling path,.unveiling rect{stroke-dasharray:1;animation:ink-write 1.2s cubic-bezier(.2,.7,.25,1) both}
+.workspace-piece{transform-box:fill-box;transform-origin:center;animation:assemble 1.25s cubic-bezier(.2,.7,.25,1) both}
+.piece-one{--from-x:-95px;--from-y:25px;--from-turn:-9deg}.piece-two{--from-x:80px;--from-y:-55px;--from-turn:7deg}.piece-three{--from-x:40px;--from-y:75px;--from-turn:-6deg}
+.workspace-frame{opacity:.6}.workspace-piece path,.workspace-piece rect{animation-delay:.12s}
+.is-unveiling .home-content{animation:content-unveil 2.1s cubic-bezier(.2,.7,.25,1) both}
+.skip-intro{position:absolute;right:32px;bottom:25px;padding:12px 0;border:0;background:none;font:inherit;font-size:13px;color:#667177;cursor:pointer;text-decoration:underline;text-underline-offset:5px}
+.skip-intro:focus-visible{outline:2px solid #486b80;outline-offset:5px}
+@keyframes ink-write{from{stroke-dashoffset:1;opacity:0}30%{opacity:1}to{stroke-dashoffset:0;opacity:1}}
+@keyframes assemble{from{transform:translate(var(--from-x),var(--from-y)) rotate(var(--from-turn))}to{transform:translate(0,0) rotate(0)}}
+@keyframes workspace-depart{0%,60%{transform:scale(1);opacity:1}100%{transform:translateX(26vw) scale(1.12);opacity:0}}
+@keyframes unveil{0%,62%{clip-path:inset(0)}100%{clip-path:inset(0 0 0 100%)}}
+@keyframes content-unveil{0%,62%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
+@media(max-width:700px){.inner #ink{opacity:.32;mask-image:linear-gradient(90deg,transparent 5%,#0003 55%,#000 100%)}}
+@media(prefers-reduced-motion:reduce){.unveiling{display:none}.is-unveiling .home-content{animation:none}}
