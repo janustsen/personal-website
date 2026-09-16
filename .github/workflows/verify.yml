@@ -1,0 +1,21 @@
+name: Verify website
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium
+      - run: npm run lint
+      - name: Verify all five pages
+        run: |
+          python3 -m http.server 63027 --bind 127.0.0.1 --directory dist > /tmp/janus-site-server.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:63027/ > /dev/null && break; sleep 1; done
+          npm test

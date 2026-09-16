@@ -5,7 +5,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT_CORE_PATH || 'playwrigh
 const base = process.env.SITE_URL || 'http://127.0.0.1:63027/';
 const evidence = process.env.EVIDENCE_DIR || 'work/verification';
 await mkdir(evidence, { recursive: true });
-const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : chromium.executablePath()), headless: true });
 const results = [];
 try {
   for (const scenario of [
@@ -52,7 +52,7 @@ try {
     if (name === 'reduced') assert.ok(canvasBefore.equals(canvasAfter), 'Reduced-motion ink must stay still');
     await page.mouse.wheel(0, 700);
     assert.equal(await page.evaluate(() => scrollY), 0, 'The homepage must not add decorative scroll space');
-    for (const [label, path] of [['Building', 'building/'], ['Experience', 'experience/'], ['About', 'about/']]) {
+    for (const [label, path] of [['Building', 'building/'], ['Experience', 'experience/'], ['About', 'about/'], ['Bookshelf', 'bookshelf/']]) {
       await page.getByRole('link', { name: label, exact: false }).click();
       await page.waitForURL(new URL(path, base).href);
       assert.equal(await page.locator('h1').innerText(), label);
@@ -74,6 +74,36 @@ try {
           assert.equal(await page.locator(`#${id} details`).getAttribute('open'), null);
         }
       }
+      if (label === 'Bookshelf') {
+        assert.equal(await page.locator('.book').count(), 20);
+        const book = page.locator('[data-book="strategy"]');
+        await book.locator('summary').click();
+        assert.equal(await book.getAttribute('open'), '');
+        if (name !== 'no-js') {
+          await book.locator('.book-tier').selectOption('C');
+          await book.locator('.book-state').selectOption('reading');
+          await page.reload({ waitUntil: 'networkidle' });
+          assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'C');
+          assert.equal(await book.locator('.book-state').inputValue(), 'reading');
+          await page.locator('#book-search').fill('Rumelt');
+          assert.equal(await page.locator('.book:visible').count(), 1);
+          await page.locator('#book-topic').selectOption('Philosophy');
+          assert.ok(await page.locator('#no-books').isVisible());
+          await page.getByRole('button', { name: 'Reset shelf' }).click();
+          assert.equal(await page.locator('.book:visible').count(), 20);
+          assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'S');
+          assert.equal(await book.locator('.book-state').inputValue(), 'unset');
+          if (name === 'desktop') {
+            await book.locator('summary').dragTo(page.locator('.tier[data-tier="A"] .tier-label'));
+            assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'A');
+            await page.getByRole('button', { name: 'Reset shelf' }).click();
+          }
+        } else {
+          assert.equal(await page.locator('.shelf-tools').isVisible(), false);
+          await book.locator('summary').press('Enter');
+          assert.equal(await book.getAttribute('open'), null);
+        }
+      }
       await page.screenshot({ path: join(evidence, `${name}-${path.slice(0,-1)}.png`), fullPage: true });
       await page.getByRole('link', { name: 'Janus Tsen' }).click();
       await page.waitForURL(base);
@@ -83,8 +113,30 @@ try {
     assert.ok(await page.evaluate(() => document.activeElement.tagName === 'A'));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     assert.deepEqual(errors, []);
-    results.push({ scenario: name, status: 'passed', pages: 4, homepageMotion: name === 'reduced' || name === 'no-js' ? 'static' : 'passive', scrollPixels: name === 'no-js' ? 'not applicable' : name === 'reduced' ? 'static' : 'changed', keyboardDetails: true, intro: name === 'reduced' || name === 'no-js' ? 'bypassed' : 'once per tab', overflow: false, errors });
+    results.push({ scenario: name, status: 'passed', pages: 5, homepageMotion: name === 'reduced' || name === 'no-js' ? 'static' : 'passive', scrollPixels: name === 'no-js' ? 'not applicable' : name === 'reduced' ? 'static' : 'changed', keyboardDetails: true, intro: name === 'reduced' || name === 'no-js' ? 'bypassed' : 'once per tab', overflow: false, errors });
     await context.close();
+  }
+  // Freeze passive animation time so pixel changes prove pointer response alone.
+  for (const reduced of [false, true]) {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: reduced ? 'reduce' : 'no-preference' });
+    await context.addInitScript(() => {
+      const raf = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = callback => raf(() => callback(1000));
+    });
+    const page = await context.newPage();
+    await page.goto(base, { waitUntil: 'networkidle' });
+    await page.locator('.unveiling').waitFor({ state: 'hidden' });
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(500);
+    const before = await page.locator('#ink').evaluate(el => el.toDataURL());
+    await page.mouse.move(1100, 800, { steps: 12 });
+    await page.waitForTimeout(500);
+    const after = await page.locator('#ink').evaluate(el => el.toDataURL());
+    if (reduced) assert.equal(before, after, 'Reduced motion must ignore the pointer');
+    else assert.notEqual(before, after, 'Pointer must disrupt the ink independently of passive flow');
+    await page.screenshot({ path: join(evidence, `pointer-${reduced ? 'reduced' : 'active'}.png`) });
+    await context.close();
+    results.push({ pointerResponse: reduced ? 'disabled for reduced motion' : 'verified with passive time frozen', status: 'passed' });
   }
   for (const action of ['skip', 'keyboard', 'scroll', 'preference']) {
     const context = await browser.newContext();

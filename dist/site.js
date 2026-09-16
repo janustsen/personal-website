@@ -3,6 +3,7 @@ const canvas = document.querySelector('#ink');
 const context = canvas?.getContext('2d');
 if (context) {
   const scene = document.body.dataset.ink || 'home';
+  const pointer = { x: -1000, y: -1000, active: false, strength: 0 };
   let width, height, progress = 0, target = 0, frame = 0, elapsed = 0, lastTime = 0;
 
   function draw() {
@@ -10,8 +11,10 @@ if (context) {
     const mobile = width < 700;
     context.save();
     // Normalized coordinates keep the ink field composed independently on phones.
-    context.translate(width * (mobile ? -.2 : .32), height * (mobile && scene === 'home' ? .38 : .06));
-    context.scale(width * (mobile ? 1.35 : .82), height * (mobile ? .7 : 1.03));
+    const tx = width * (mobile ? -.2 : .32), ty = height * (mobile && scene === 'home' ? .38 : .06);
+    const sx = width * (mobile ? 1.35 : .82), sy = height * (mobile ? .7 : 1.03);
+    context.translate(tx, ty);
+    context.scale(sx, sy);
     for (let i = 0; i < 42; i++) {
       const offset = i / 41;
       const wave = Math.sin(offset * 4.5 + progress * 2.8);
@@ -29,12 +32,25 @@ if (context) {
         context.ellipse(.65, .48, .22 + offset * .25, .35 + offset * .32,
           -.35 + progress * .95, 0, Math.PI * 2);
       } else {
-      context.moveTo(.08 + offset * .62 - progress * .22, 1.24);
-      context.bezierCurveTo(
-        -.12 + offset * .5 + progress * .42, .65 - progress * .45,
-        1.03 - offset * .48 + wave * .1, .98 - progress * .88,
-        .87 + offset * .23, -.23 + progress * .35
-      );
+        const points = [
+          [.08 + offset * .62 - progress * .22, 1.24],
+          [-.12 + offset * .5 + progress * .42, .65 - progress * .45],
+          [1.03 - offset * .48 + wave * .1, .98 - progress * .88],
+          [.87 + offset * .23, -.23 + progress * .35]
+        ];
+        for (let step = 0; step <= 64; step++) {
+          const t = step / 64, u = 1 - t;
+          const weights = [u ** 3, 3 * u * u * t, 3 * u * t * t, t ** 3];
+          let x = 0, y = 0;
+          for (let j = 0; j < 4; j++) { x += points[j][0] * weights[j]; y += points[j][1] * weights[j]; }
+          const dx = x * sx + tx - pointer.x, dy = y * sy + ty - pointer.y;
+          const distance = Math.hypot(dx, dy);
+          const ripple = Math.exp(-distance * distance / 16000) * pointer.strength;
+          const push = 20 + Math.sin(distance * .045 - elapsed * .004 + offset * 3) * 7;
+          x += dx / Math.max(distance, 1) * push * ripple / sx;
+          y += dy / Math.max(distance, 1) * push * ripple / sy;
+          if (step === 0) context.moveTo(x, y); else context.lineTo(x, y);
+        }
       }
       context.strokeStyle = `rgba(42, 53, 60, ${.19 + Math.sin(offset * Math.PI) * .23})`;
       context.lineWidth = (i % 7 === 0 ? 1 : .65) / width;
@@ -44,6 +60,7 @@ if (context) {
   }
 
   function tick(now) {
+    pointer.strength += ((pointer.active && !reduced.matches ? 1 : 0) - pointer.strength) * .12;
     const flowing = scene === 'home' && !reduced.matches;
     if (flowing) {
       elapsed += lastTime ? Math.min(now - lastTime, 64) : 0;
@@ -69,11 +86,18 @@ if (context) {
     canvas.width = Math.round(width * scale);
     canvas.height = Math.round(height * scale);
     context.setTransform(scale, 0, 0, scale, 0, 0);
-    if (reduced.matches) progress = 0;
+    if (reduced.matches) { progress = 0; pointer.strength = 0; }
     draw();
     update();
   }
 
+  if (scene === 'home') {
+    addEventListener('pointermove', event => {
+      if (event.pointerType !== 'mouse' || reduced.matches) return;
+      pointer.x = event.clientX; pointer.y = event.clientY; pointer.active = true;
+    }, { passive: true });
+    document.documentElement.addEventListener('pointerleave', () => { pointer.active = false; });
+  }
   if (scene !== 'home') addEventListener('scroll', update, { passive: true });
   document.addEventListener('visibilitychange', () => {
     cancelAnimationFrame(frame);

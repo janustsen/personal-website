@@ -1,0 +1,6 @@
+{
+  "name": "janus-personal-website",
+  "private": true,
+  "scripts": { "test": "node verify.mjs", "lint": "node --check dist/site.js && node --check dist/bookshelf.js && node --check verify.mjs" },
+  "devDependencies": { "playwright-core": "1.62.1" }
+}
