@@ -16,4 +16,4 @@ Copy follows the user's professional positioning, with public evidence links bes
 
 No private source documents, client datasets, credentials, or contact submissions are packaged.
 
-Bookshelf offers 20 sourced philosophy/business suggestions, tier drag-and-drop and keyboard-accessible menus, filtering, and reading statuses. Initial rankings are explicitly AI-suggested, not confirmed personal reads. Changes persist only in the visitor’s browser; Reset restores the suggestions. Multiple book notes can stay open for comparison. Native book details remain available without JavaScript; tier/status controls, filtering, and reset require JavaScript.
+Bookshelf offers 20 sourced philosophy/business suggestions, tier drag-and-drop and keyboard-accessible menus, filtering, and reading statuses. Initial rankings were suggested from inferred interests; the public interface uses simple S/A/B/C labels. Reading statuses start unset. Changes persist only in the visitor’s browser; Reset restores the suggestions. Multiple book notes can stay open for comparison. Native book details remain available without JavaScript; tier/status controls, filtering, and reset require JavaScript.
