@@ -79,6 +79,11 @@ try {
         const book = page.locator('[data-book="strategy"]');
         await book.locator('summary').click();
         assert.equal(await book.getAttribute('open'), '');
+        const otherBook = page.locator('.book:not([data-book="strategy"])').first();
+        await otherBook.locator('summary').click();
+        assert.equal(await otherBook.getAttribute('open'), '');
+        assert.equal(await book.getAttribute('open'), '', 'Opening another book must keep existing notes open');
+        await otherBook.locator('summary').click();
         if (name !== 'no-js') {
           await book.locator('.book-tier').selectOption('C');
           await book.locator('.book-state').selectOption('reading');

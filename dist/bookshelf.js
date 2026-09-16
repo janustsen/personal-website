@@ -49,9 +49,6 @@ for (const book of books) {
     move(book, event.target.value); event.target.focus(); save();
   });
   book.querySelector('.book-state').addEventListener('change', save);
-  book.addEventListener('toggle', () => {
-    if (book.open) for (const other of books) if (other !== book) other.open = false;
-  });
 }
 for (const tier of document.querySelectorAll('.tier')) {
   tier.addEventListener('dragover', event => { if (dragged) { event.preventDefault(); tier.classList.add('drop-target'); } });
