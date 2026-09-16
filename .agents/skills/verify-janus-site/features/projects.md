@@ -1,13 +1,7 @@
 # Project explanations
 
 ## Sub-features
-Verdnt Labs and Trus case-study disclosures, LeanData context disclosure, project source links, role attribution.
+Verdnt Labs and Trus disclosures on Building; concise professional entries on Experience; public evidence and personal context on About.
 
-## How to get to it (user POV)
-Choose Work, then Inside the work under either venture or Project context for LeanData.
-
-## Driving it with Playwright
-Run `node verify.mjs`. Click `#verdnt summary`, confirm contribution content, close with Enter. Click `#trus summary`, confirm Diego's current engineering role, close with Space. Exercise `.project-index summary`.
-
-## Gotchas
-These are native details elements and must work with JavaScript disabled. Diagrams explain the products; they are not product screenshots or live demos.
+## User path and drive
+Choose Building, then A closer look under either venture. `node verify.mjs` opens `#verdnt summary` and `#trus summary`, confirms native open state, and closes each with Enter. These controls must also work without JavaScript. Trus copy distinguishes original development from Diego's current engineering leadership.

@@ -1,17 +1,15 @@
 # Janus Tsen
 
-Static personal website. The delivered site is `dist/`. No build or production dependencies.
+A four-page static personal website. Deploy `dist/`; no build or production dependencies.
 
 Preview: `python3 -u -m http.server 63027 --bind 127.0.0.1 --directory dist`.
 
-Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `node --check dist/site.js` checks authored JavaScript syntax. `node verify.mjs` drives the real website.
+Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `node --check dist/site.js` checks JavaScript syntax; `node verify.mjs` drives all four pages in a real browser.
 
-## Source and assets
+## Design and sources
 
-- Original portfolio copy, based on the user's approved professional positioning.
-- Original generated editorial glass image; no personal likeness or product screenshot is synthesized.
-- Manrope, SIL Open Font License, included in `dist/assets/manrope-license.txt`.
-- Scroll Craft engine by Nate Herk, unchanged; MIT license in `dist/assets/LICENSE`.
-- Public source links sit beside the corresponding case studies and writing. The legacy Duna case-study page is explicitly identified as using the former name.
+A short homepage links to Building, Experience, and About. Original canvas ink lines respond to native scrolling. Reduced-motion visitors get a static composition. Content and navigation work without JavaScript.
 
-No private vault documents, client datasets, credentials, or contact submissions are packaged.
+Copy follows the user's professional positioning, with public evidence links beside the relevant work. The legacy Duna case-study page is identified as using Verdnt Labs' former name. Manrope is included under the SIL Open Font License in `dist/assets/manrope-license.txt`.
+
+No private source documents, client datasets, credentials, or contact submissions are packaged.
