@@ -28,3 +28,8 @@
 @keyframes content-unveil{0%,62%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
 @media(max-width:700px){.inner #ink{opacity:.32;mask-image:linear-gradient(90deg,transparent 5%,#0003 55%,#000 100%)}}
 @media(prefers-reduced-motion:reduce){.unveiling{display:none}.is-unveiling .home-content{animation:none}}
+
+.portrait{width:92px;height:104px;overflow:hidden;border-radius:3px;margin-bottom:24px}
+.portrait img{display:block;width:100%;height:100%;object-fit:cover;transform:scale(1.5);transform-origin:50% 47%}
+.contact-links{flex-wrap:wrap;column-gap:26px;row-gap:0}
+@media(max-width:700px){.portrait{width:76px;height:86px;margin-bottom:18px}.home-stage{padding-top:clamp(40px,8svh,72px)}}

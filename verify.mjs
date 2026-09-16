@@ -25,6 +25,8 @@ try {
     assert.equal((await page.goto(base, { waitUntil: 'networkidle' })).status(), 200);
     await page.evaluate(() => document.fonts.ready);
     assert.equal(await page.locator('h1').innerText(), 'Janus Tsen');
+    assert.equal(await page.getByRole('link', { name: 'GitHub', exact: true }).getAttribute('href'), 'https://github.com/janustsen');
+    assert.ok(await page.locator('.portrait img').evaluate(img => img.complete && img.naturalWidth > 0));
     assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight * 1.5));
     if (name !== 'reduced' && name !== 'no-js') {
       assert.equal(await page.locator('.unveiling').count(), 1, 'First visit should unveil');
@@ -37,6 +39,7 @@ try {
     await page.screenshot({ path: join(evidence, `${name}-start.png`) });
     const canvasBefore = await page.locator('#ink').screenshot();
     const textBefore = await page.locator('.home-content').boundingBox();
+    assert.ok(textBefore.y >= 0 && textBefore.y + textBefore.height <= options.viewport.height, `${name}: portrait and links must fit the opening viewport`);
     // Native scrolling is the real input; verify rendered pixels, not a progress variable.
     await page.mouse.wheel(0, 700);
     await page.waitForTimeout(850);
