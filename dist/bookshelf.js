@@ -65,7 +65,7 @@ document.querySelector('#reset-shelf').addEventListener('click', () => {
   for (const book of books) { move(book, book.dataset.defaultTier); book.querySelector('.book-state').value = 'unset'; book.open = false; }
   search.value = ''; topic.value = 'all'; filter();
   try { localStorage.removeItem(storageKey); } catch {}
-  status.textContent = 'Suggested tiers restored. Reading statuses are unconfirmed.';
+  status.textContent = 'Suggested tiers restored. Reading statuses cleared.';
 });
 document.querySelector('.shelf-tools').hidden = false;
-document.querySelector('.shelf-help').textContent = 'Open a book for context. Drag it to a tier, or use the tier menu inside. Your changes stay in this browser.';
+document.querySelector('.shelf-help').textContent = 'These are reading suggestions, not a record of what I’ve read or my personal ratings. Open a book for context. Drag it to a tier, or use the tier menu inside. Your changes stay in this browser.';

@@ -10,6 +10,6 @@ The current page structure, contact links, Bookshelf behavior, and motion are do
 - Phone composition is adjusted independently. Reduced motion leaves static ink; all content works without JavaScript.
 
 ## Content boundaries
-Use Verdnt Group, explaining the historical Duna name on its source link. Distinguish original Trus engineering contributions from current Diego-led engineering. No private revenue, operational details, inferred job dates, or invented metrics. HyperPay second place is public-confirmed; omit conflicting team counts. The Stanford AI memo is co-authored.
+Project status and source links follow [README.md](README.md#design-and-sources); contribution history is in the [Building page](dist/building/index.html). No private revenue, operational details, inferred job dates, or invented metrics. HyperPay second place is public-confirmed; omit conflicting team counts. The Stanford AI memo is co-authored.
 
 Work remains isolated from Firstmate. Private source documents are not included in the site.

@@ -12,7 +12,7 @@ A short homepage without a top bar links to Building, Experience, About, and Boo
 
 The homepage offers Email and LinkedIn contact links, uses the supplied headshot and links to the verified GitHub profile at `github.com/janustsen`. X links to the user-provided profile at `x.com/janustsen`.
 
-Copy follows the user's professional positioning, with public evidence links beside the relevant work. The legacy Duna case-study page is identified as using Verdnt Group’s former name. Manrope is included under the SIL Open Font License in `dist/assets/manrope-license.txt`.
+Copy follows the user's professional positioning, with public evidence links beside the relevant work. Building links to Verdnt Group’s current site and identifies Trus as retired. Manrope is included under the SIL Open Font License in `dist/assets/manrope-license.txt`.
 
 No private source documents, client datasets, credentials, or contact submissions are packaged.
 
