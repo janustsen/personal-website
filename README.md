@@ -10,6 +10,8 @@ Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `npm run lint`
 
 A short homepage without a top bar links to Building, Experience, About, and Bookshelf. Canvas ink appears on every page; About and Bookshelf share the loop composition. The homepage responds locally to the mouse cursor and flows passively with no extra scroll space; inner-page ink responds to native scrolling. A 2.1-second homepage unveiling assembles an abstract workspace, then reveals the content; it plays once per tab and ends immediately on Skip, wheel or touch input, keyboard input, focus, or a reduced-motion preference change. The ambient loop pauses in hidden tabs. Reduced-motion visitors get a static composition. Content and navigation work without JavaScript.
 
+Link, entry, disclosure, and bookshelf motion is described in the [ink feedback reference](.agents/skills/verify-janus-site/features/responsive.md#ink-feedback).
+
 The homepage offers Email and LinkedIn contact links, uses the supplied headshot and links to the verified GitHub profile at `github.com/janustsen`. X links to the user-provided profile at `x.com/janustsen`.
 
 Copy follows the user's professional positioning, with public evidence links beside the relevant work. Building links to Verdnt Group’s current site and identifies Trus as retired. Manrope is included under the SIL Open Font License in `dist/assets/manrope-license.txt`.

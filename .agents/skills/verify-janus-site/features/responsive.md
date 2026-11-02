@@ -10,7 +10,7 @@ The drive covers 1440×1000, 390×844, 360×640, reduced motion, and JavaScript 
 
 ## Ink feedback
 
-Homepage links draw an underline on hover or keyboard focus. On Building, Experience, and About, a short ink rule draws as each entry comes into view in browsers supporting scroll timelines; other browsers show the rule immediately. Native project and book disclosures fade their contents in, and desktop bookshelf spines tilt slightly on hover. These effects use transforms and opacity, leaving text in place. Reduced motion keeps static rules and immediate feedback.
+Homepage links draw an underline on hover or keyboard focus. On Building, Experience, and About, a short ink rule draws as each entry comes into view in browsers supporting scroll timelines; other browsers show the rule immediately. Native project and book disclosures fade their contents in with a slight upward movement, and desktop bookshelf spines tilt slightly on hover. Homepage link text stays in place. Reduced motion keeps static rules and immediate feedback.
 
 Check a homepage link with Tab, open a Building disclosure with Enter, scroll Experience and About, and hover a Bookshelf entry. Repeat with reduced motion: disclosure content and icons must stay still. Without JavaScript, links and disclosures remain usable.
 
