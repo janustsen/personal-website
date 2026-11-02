@@ -36,6 +36,12 @@ try {
       await page.locator('.unveiling').waitFor({ state: 'detached' });
     } else assert.equal(await page.locator('.unveiling').count(), 0);
     assert.equal(await page.locator('.home-content').evaluate(el => getComputedStyle(el).opacity), '1');
+    const firstLink = page.locator('.home-links a').first();
+    const linkBefore = await firstLink.boundingBox();
+    await firstLink.focus();
+    await page.waitForTimeout(300);
+    assert.deepEqual(await firstLink.boundingBox(), linkBefore, 'Link feedback must not move the text');
+    assert.equal(await firstLink.evaluate(el => getComputedStyle(el, '::after').transform), 'matrix(1, 0, 0, 1, 0, 0)');
     await page.screenshot({ path: join(evidence, `${name}-start.png`) });
     const canvasBefore = await page.locator('#ink').screenshot();
     const textBefore = await page.locator('.home-content').boundingBox();
@@ -70,6 +76,12 @@ try {
         for (const id of ['verdnt', 'trus']) {
           await page.locator(`#${id} summary`).click();
           assert.equal(await page.locator(`#${id} details`).getAttribute('open'), '');
+          const animation = await page.locator(`#${id} .detail-body`).evaluate(el => getComputedStyle(el).animationName);
+          assert.equal(animation, name === 'reduced' ? 'none' : 'note-open');
+          if (name === 'reduced') {
+            assert.equal(await page.locator(`#${id}`).evaluate(el => getComputedStyle(el, '::before').animationName), 'none');
+          }
+          await page.screenshot({ path: join(evidence, `${name}-${id}-open.png`) });
           await page.locator(`#${id} summary`).press('Enter');
           assert.equal(await page.locator(`#${id} details`).getAttribute('open'), null);
         }
