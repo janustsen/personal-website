@@ -1,20 +1,22 @@
 # Janus Tsen
 
-A five-page static personal website. Deploy `dist/`; no build or production dependencies.
+A static personal website: one long homepage plus a Bookshelf page. Deploy `dist/`; no build or production dependencies.
 
 Preview: `python3 -u -m http.server 63027 --bind 127.0.0.1 --directory dist`.
 
-Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `npm run lint` checks JavaScript syntax for both site scripts and the verification script; `node verify.mjs` drives all five pages in a real browser.
+Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `npm run lint` checks JavaScript syntax for both site scripts and the verification script; `node verify.mjs` drives both pages in a real browser.
 
 ## Design and sources
 
-A short homepage without a top bar links to Building, Experience, About, and Bookshelf. Canvas ink appears on every page; About and Bookshelf share the loop composition. The homepage responds locally to the mouse cursor and flows passively with no extra scroll space; inner-page ink responds to native scrolling. A 2.1-second homepage unveiling assembles an abstract workspace, then reveals the content; it plays once per tab and ends immediately on Skip, wheel or touch input, keyboard input, focus, or a reduced-motion preference change. The ambient loop pauses in hidden tabs. Reduced-motion visitors get a static composition. Content and navigation work without JavaScript.
+The look follows alexanderobenauer.com: a single column, the name in condensed capitals with inline contact links, a serif intro, vertical section labels (Building, Experience, Strategy, Tech & AI, Values, Books, About), italic serif entry titles with one-line descriptions, bracketed thumbnail cards joined to their titles by a rule, simple rules between sections, and a quiet centered footer. No text, images, logo, or code were copied from that site. `/building/`, `/experience/`, and `/about/` redirect to their homepage sections. There is no dark theme.
 
-Link, entry, disclosure, and bookshelf motion is described in the [ink feedback reference](.agents/skills/verify-janus-site/features/responsive.md#ink-feedback).
+Motion is limited to a gentle fade-and-rise as entries and cards scroll into view, plus disclosure fades. Anything on screen at load shows at once. Reduced-motion and no-JavaScript visitors get a static page with everything visible.
+
+Drafted insights (S1–S5, A0–A5, V1–V5) and book notes (B0–B6) await Janus's approval. Each carries `data-draft="ID"` and an amber draft tag; V1, V3, V5, and B1 are also `hidden`. Approve an item by removing `data-draft` (and `hidden`); cut it by deleting the element, then update the lists in `verify.mjs`.
 
 The homepage offers Email and LinkedIn contact links, uses the supplied headshot and links to the verified GitHub profile at `github.com/janustsen`. X links to the user-provided profile at `x.com/janustsen`.
 
-Copy follows the user's professional positioning, with public evidence links beside the relevant work. Building links to Verdnt Group’s current site and identifies Trus as retired. Manrope is included under the SIL Open Font License in `dist/assets/manrope-license.txt`.
+Copy follows the user's professional positioning, with public evidence links beside the relevant work. Building links to Verdnt Group’s current site and identifies Trus as retired. Crimson Pro, Inter, and Unica One are self-hosted under the SIL Open Font License; see `dist/assets/fonts/LICENSES.txt`.
 
 No private source documents, client datasets, credentials, or contact submissions are packaged.
 
