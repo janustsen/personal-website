@@ -58,6 +58,8 @@ try {
     await page.waitForTimeout(900);
     assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0, 'Everything is visible after scrolling');
     assert.ok(await page.locator('#about img').evaluate(img => img.complete && img.naturalWidth > 0), 'Headshot loads');
+    assert.deepEqual(await page.locator('.thumb.drawing img').evaluateAll(imgs => imgs.map(img => img.complete && img.naturalWidth > 0)), [true, true, true], 'Line drawings load');
+    assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Links carry no arrow glyphs');
     await page.screenshot({ path: join(evidence, `${name}-home-full.png`), fullPage: true });
 
     // Section jumps and project disclosures.
@@ -88,6 +90,7 @@ try {
     await page.goto(new URL('bookshelf/', base).href, { waitUntil: 'networkidle' });
     assert.equal(await page.locator('h1').innerText(), 'BOOKSHELF');
     assert.equal(await page.locator('.book').count(), 20);
+    assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Bookshelf links carry no arrow glyphs');
     const book = page.locator('[data-book="strategy"]');
     await book.locator('summary').click();
     assert.equal(await book.getAttribute('open'), '');

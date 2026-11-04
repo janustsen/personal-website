@@ -8,7 +8,7 @@ Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `npm run lint`
 
 ## Design and sources
 
-The look follows alexanderobenauer.com: a single column, the name in condensed capitals with inline contact links, a serif intro, vertical section labels (Building, Experience, Strategy, Tech & AI, Values, Books, About), italic serif entry titles with one-line descriptions, bracketed thumbnail cards joined to their titles by a rule, simple rules between sections, and a quiet centered footer. No text, images, logo, or code were copied from that site. `/building/`, `/experience/`, and `/about/` redirect to their homepage sections. There is no dark theme.
+The look follows alexanderobenauer.com: a single column, the name in condensed capitals with inline contact links, a serif intro, vertical section labels (Building, Experience, Strategy, Tech & AI, Values, Books, About), italic serif entry titles with one-line descriptions, bracketed thumbnail cards joined to their titles by a rule (detailed pure-stroke line drawings in `dist/assets/drawings/` for Verdnt, DRW, and Morgan Stanley; the headshot for About), simple rules between sections, and a quiet centered footer. No text, images, logo, or code were copied from that site. `/building/`, `/experience/`, and `/about/` redirect to their homepage sections. There is no dark theme.
 
 Motion is limited to a gentle fade-and-rise as entries and cards scroll into view, plus disclosure fades. Anything on screen at load shows at once. Reduced motion disables scroll and disclosure animations. Without JavaScript, content appears without scroll reveal and native disclosures still work. Held-back drafts remain hidden in both modes.
 
@@ -16,7 +16,7 @@ Drafted insights (S1–S5, A0–A5, V1–V5) and book notes (B0–B6) await Janu
 
 The homepage offers Email and LinkedIn contact links, uses the supplied headshot and links to the verified GitHub profile at `github.com/janustsen`. X links to the user-provided profile at `x.com/janustsen`.
 
-Copy follows the user's professional positioning, with public evidence links beside the relevant work. Building links to Verdnt Group’s current site and identifies Trus as retired. Crimson Pro, Inter, and Unica One are self-hosted under the SIL Open Font License; see `dist/assets/fonts/LICENSES.txt`.
+Copy follows the user's professional positioning, with public evidence links beside the relevant work. Links are plain underlined text, with no arrow glyphs. Building links to Verdnt Group’s current site and identifies Trus as retired. Crimson Pro, Inter, and Unica One are self-hosted under the SIL Open Font License; see `dist/assets/fonts/LICENSES.txt`.
 
 No private source documents, client datasets, credentials, or contact submissions are packaged.
 
