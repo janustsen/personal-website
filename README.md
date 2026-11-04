@@ -1,6 +1,6 @@
 # Janus Tsen
 
-A static personal website: one long homepage plus a Bookshelf page. Deploy `dist/`; no build or production dependencies.
+A static personal website: one long homepage plus a Bookshelf page. Deploy `dist/`; no build or production dependencies. This redesign is for preview review; nothing goes live until Janus approves it.
 
 Preview: `python3 -u -m http.server 63027 --bind 127.0.0.1 --directory dist`.
 
@@ -10,7 +10,7 @@ Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `npm run lint`
 
 The look follows alexanderobenauer.com: a single column, the name in condensed capitals with inline contact links, a serif intro, vertical section labels (Building, Experience, Strategy, Tech & AI, Values, Books, About), italic serif entry titles with one-line descriptions, bracketed thumbnail cards joined to their titles by a rule, simple rules between sections, and a quiet centered footer. No text, images, logo, or code were copied from that site. `/building/`, `/experience/`, and `/about/` redirect to their homepage sections. There is no dark theme.
 
-Motion is limited to a gentle fade-and-rise as entries and cards scroll into view, plus disclosure fades. Anything on screen at load shows at once. Reduced-motion and no-JavaScript visitors get a static page with everything visible.
+Motion is limited to a gentle fade-and-rise as entries and cards scroll into view, plus disclosure fades. Anything on screen at load shows at once. Reduced motion disables scroll and disclosure animations. Without JavaScript, content appears without scroll reveal and native disclosures still work. Held-back drafts remain hidden in both modes.
 
 Drafted insights (S1–S5, A0–A5, V1–V5) and book notes (B0–B6) await Janus's approval. Each carries `data-draft="ID"` and an amber draft tag; V1, V3, V5, and B1 are also `hidden`. Approve an item by removing `data-draft` (and `hidden`); cut it by deleting the element, then update the lists in `verify.mjs`.
 
