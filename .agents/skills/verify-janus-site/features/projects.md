@@ -1,7 +1,7 @@
 # Project explanations and drafted insights
 
 ## Sub-features
-Verdnt Group and Trus disclosures under Building; one-line professional entries under Experience; public evidence and personal context under About. Strategy, Tech & AI, Values, and Books hold drafted insights awaiting Janus's approval.
+Verdnt Group and Trus disclosures under Building; professional entries under Experience; public evidence and personal context under About. Strategy, Tech & AI, Values, and Books hold drafted insights awaiting Janus's approval.
 
 ## Drafts
 Draft markers, held-back items, and approval steps are documented in [README.md](../../../../../README.md#design-and-sources).

@@ -64,7 +64,7 @@ summary::after{content:" +"}
 details[open]>summary::after{content:" −"}
 .detail-body{display:flex;flex-direction:column;gap:.6rem;padding:.3rem 0 0 .9rem;border-left:1px solid var(--rule)}
 
-/* Draft markers for content awaiting approval. Remove data-draft to approve an item. */
+/* Draft approval workflow: see README.md, Design and sources. */
 [data-draft]::before{content:"Draft " attr(data-draft) " · for approval";display:block;font:400 12px/1 var(--caps);text-transform:uppercase;letter-spacing:.06em;color:var(--draft);margin-bottom:.45rem}
 
 .footer{margin:5rem auto 0;padding-top:3.5rem;border-top:1px solid var(--rule);max-width:32rem;text-align:center;font-size:14px}
