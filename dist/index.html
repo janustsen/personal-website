@@ -12,80 +12,116 @@
 </head>
 <body>
 <div class="page">
-<header class="masthead">
+<header class="masthead" id="top">
   <div class="identity">
     <h1><a href="/">Janus Tsen</a></h1>
     <p class="contact"><a href="mailto:janustsen@outlook.com">Email</a> <a href="https://www.linkedin.com/in/janustsen" target="_blank" rel="noopener noreferrer">LinkedIn</a> <a href="https://github.com/janustsen" target="_blank" rel="noopener noreferrer">GitHub</a> <a href="https://x.com/janustsen" target="_blank" rel="noopener noreferrer">X</a></p>
     <nav class="jump" aria-label="On this page"><a href="#building">Building</a> <a href="#experience">Experience</a> <a href="#strategy">Thinking</a> <a href="#books">Books</a> <a href="#about">About</a> <a href="/bookshelf/">Bookshelf</a></nav>
   </div>
   <div class="intro">
-    <img class="mark" src="/assets/favicon.svg" alt="" width="44" height="44">
+    <img class="mark" src="/assets/avatar-88.png" srcset="/assets/avatar-44.webp 44w, /assets/avatar-88.webp 88w" sizes="44px" alt="Janus Tsen" width="44" height="44">
     <p>I study economics at Stanford and co‑founded Verdnt&nbsp;Group.</p>
     <p class="intro-second">Next summer I’ll join DRW’s central strategy team in&nbsp;Chicago.</p>
   </div>
 </header>
+<nav class="bar" aria-label="Sections" hidden>
+  <a class="bar-name" href="#top"><img src="/assets/avatar-88.png" srcset="/assets/avatar-44.webp 44w, /assets/avatar-88.webp 88w" sizes="24px" alt="" width="24" height="24">Janus Tsen</a>
+  <span class="bar-nav"><a href="#building" data-for="building">Building</a> <a href="#experience" data-for="experience">Experience</a> <a href="#strategy" data-for="strategy ai values">Thinking</a> <a href="#books" data-for="books">Books</a> <a href="#about" data-for="about">About</a> <a href="/bookshelf/">Bookshelf</a></span>
+  <span class="bar-social"><a href="mailto:janustsen@outlook.com">Email</a> <a href="https://www.linkedin.com/in/janustsen" target="_blank" rel="noopener noreferrer">LinkedIn</a> <a href="https://github.com/janustsen" target="_blank" rel="noopener noreferrer">GitHub</a> <a href="https://x.com/janustsen" target="_blank" rel="noopener noreferrer">X</a></span>
+</nav>
 
 <main>
 <section class="group" id="building" aria-labelledby="building-label">
   <h2 class="label" id="building-label">Building</h2>
   <div class="items">
-    <div class="row">
-      <article class="item reveal" id="verdnt">
+    <div class="span" data-art="verdnt">
+      <div class="entries">
+        <article class="item reveal" id="verdnt">
         <h3>Verdnt Group</h3>
         <p>I co-founded Verdnt Group with Diego Sanchez Tirado. We’re building Verdnt Studio, a tool for food and drink teams developing new drinks. The goal is to help them turn market research into product ideas they can test.</p>
         <p class="aside">Co-founder</p>
-        <details><summary>A closer look</summary><div class="detail-body"><p>Verdnt Studio brings together research from social media and retail shelves to help teams decide what to make next. I work with clients to understand what they need and build the software.</p><p>Our client work includes software that combines market research with a company’s product information to suggest new products. Teams can check the sources behind each suggestion before deciding what to test.</p><p><a href="https://verdntgroup.com/" target="_blank" rel="noopener noreferrer">Visit Verdnt Group</a></p></div></details>
-      </article>
-      <figure class="card reveal" aria-hidden="true"><div class="thumb drawing"><img src="/assets/drawings/shelf.svg" alt="" width="800" height="500" loading="lazy"></div><figcaption><span>Verdnt Studio</span><span>Now</span></figcaption></figure>
+        <details><summary>More on Verdnt Studio</summary><div class="detail-body"><p>Verdnt Studio pulls its research from social media and retail shelves. I work with clients to understand what they need and build the software.</p><p>Our client work includes software that combines market research with a company’s product information to suggest new products. Teams can check the sources behind each suggestion before deciding what to test.</p><p><a href="https://verdntgroup.com/" target="_blank" rel="noopener noreferrer">Visit Verdnt Group</a></p></div></details>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/verdnt.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
     </div>
-    <article class="item reveal" id="trus">
-      <h3>Trus</h3>
-      <p>I co-founded Trus with Diego Sanchez Tirado to help people create software for their own work. The idea was to describe what you needed and have AI build a workspace for it. Trus is now retired.</p>
-      <p class="aside">Co-founder · Retired</p>
-      <details><summary>A closer look</summary><div class="detail-body"><p>I helped build the first version, where AI assembled workspaces from a set of tables, charts, calendars, and other components we had built.</p><p>I later focused on product direction and finding customers, while Diego led the engineering.</p></div></details>
-    </article>
+    <div class="span" data-art="trus">
+      <div class="entries">
+        <article class="item reveal" id="trus">
+        <h3>Trus</h3>
+        <p>I co-founded Trus with Diego Sanchez Tirado to help people create software for their own work. The idea was to describe what you needed and have AI build a workspace for it. Trus is now retired.</p>
+        <p class="aside">Co-founder · Retired</p>
+        <details><summary>How Trus worked</summary><div class="detail-body"><p>I helped build the first version, where AI assembled workspaces from a set of tables, charts, calendars, and other components we had built.</p><p>I later focused on product direction and finding customers, while Diego led the engineering.</p></div></details>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/trus.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
   </div>
 </section>
 
 <section class="group" id="experience" aria-labelledby="experience-label">
   <h2 class="label" id="experience-label">Experience</h2>
   <div class="items">
-    <div class="row">
-      <article class="item reveal">
+    <div class="span" data-art="drw">
+      <div class="entries">
+        <article class="item reveal">
         <h3>DRW</h3>
         <p>I’ll join the central strategy team in Chicago, working with trading desks to assess new business opportunities.</p>
         <p class="aside">Incoming Strategy Intern · Summer 2027</p>
-      </article>
-      <figure class="card reveal" aria-hidden="true"><div class="thumb drawing"><img src="/assets/drawings/skyline.svg" alt="" width="800" height="500" loading="lazy"></div><figcaption><span>Central strategy</span><span>2027</span></figcaption></figure>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/drw.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
     </div>
-    <article class="item reveal">
-      <h3>Camber</h3>
-      <p>I researched target customers and positioning for industrial AI software, and built a working quoting-demo prototype.</p>
-      <p class="aside">Strategy Associate · July–September 2026</p>
-    </article>
-    <div class="row">
-      <article class="item reveal">
+    <div class="span" data-art="camber">
+      <div class="entries">
+        <article class="item reveal">
+        <h3>Camber</h3>
+        <p>I researched target customers and positioning for industrial AI software, and built a working quoting-demo prototype.</p>
+        <p class="aside">Strategy Associate · July to September 2026</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/camber.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
+    <div class="span" data-art="morgan-stanley">
+      <div class="entries">
+        <article class="item reveal">
         <h3>Morgan Stanley</h3>
         <p>I worked on wealth-management workflows in Palo Alto, applying agentic AI to portfolio monitoring and client data tracking.</p>
-        <p class="aside">Strategy &amp; Analytics Intern · April–September 2026</p>
-      </article>
-      <figure class="card reveal" aria-hidden="true"><div class="thumb drawing"><img src="/assets/drawings/desk.svg" alt="" width="800" height="500" loading="lazy"></div><figcaption><span>Wealth management</span><span>2026</span></figcaption></figure>
+        <p class="aside">Strategy &amp; Analytics Intern · April to September 2026</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/morgan-stanley.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
     </div>
-    <article class="item reveal">
-      <h3>FStea</h3>
-      <p>I worked on FStea’s college-market positioning and distribution, and modeled production costs.</p>
-      <p class="aside">Go-To-Market Intern · July–September 2025</p>
-    </article>
-    <article class="item reveal">
-      <h3>HyperPay</h3>
-      <p>Led our team’s embedded-treasury proposal and working-capital model. We placed second. <a href="https://www.linkedin.com/posts/muslims-of-haas_muslims-of-haas-recently-hosted-our-first-ever-activity-7454931679527424001-2Rmo" target="_blank" rel="noopener noreferrer">Competition results</a></p>
-      <p class="aside">Case Competition · 2026</p>
-    </article>
-    <article class="item reveal">
-      <h3>LeanData</h3>
-      <p>Built a Python regression-based pricing model for B2B customer segments.</p>
-      <p class="aside">Analytics Project · October 2025–February 2026</p>
-    </article>
+    <div class="span" data-art="fstea">
+      <div class="entries">
+        <article class="item reveal">
+        <h3>FStea</h3>
+        <p>I worked on FStea’s college-market positioning and distribution, and modeled production costs.</p>
+        <p class="aside">Go-To-Market Intern · July to September 2025</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/fstea.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
+    <div class="span" data-art="hyperpay">
+      <div class="entries">
+        <article class="item reveal">
+        <h3>HyperPay</h3>
+        <p>Led our team’s embedded-treasury proposal and working-capital model. We placed second. <a href="https://www.linkedin.com/posts/muslims-of-haas_muslims-of-haas-recently-hosted-our-first-ever-activity-7454931679527424001-2Rmo" target="_blank" rel="noopener noreferrer">Competition results</a></p>
+        <p class="aside">Case Competition · 2026</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/hyperpay.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
+    <div class="span" data-art="leandata">
+      <div class="entries">
+        <article class="item reveal">
+        <h3>LeanData</h3>
+        <p>Built a Python regression-based pricing model for B2B customer segments.</p>
+        <p class="aside">Analytics Project · October 2025 to February 2026</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/leandata.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
   </div>
 </section>
 
@@ -93,163 +129,200 @@
 <section class="group" id="strategy" aria-labelledby="strategy-label">
   <h2 class="label" id="strategy-label">Strategy</h2>
   <div class="items">
-    <article class="item reveal" data-draft="S1">
-      <h3>Find the niche the incumbent ignores.</h3>
-      <p>HyperPay is a payment processor in a crowded market. Instead of pitching a better payment product, we looked at the cash merchants leave sitting idle. The working-capital advance was the idea the judges liked.</p>
-      <p class="aside">From: HyperPay case competition, 2026</p>
-    </article>
-    <article class="item reveal" data-draft="S2">
-      <h3>Check that the audience exists before you build.</h3>
-      <p>I built Forge, an incubator for student nonprofits, before I knew anyone wanted it. We had to cut it back. At FStea I pushed to aim the drink at college students, because that’s where it already fit. Now I try to find out whether people want something before I build more of it.</p>
-      <p class="aside">From: Homer Humanities and FStea</p>
-    </article>
-    <article class="item reveal" data-draft="S3">
-      <h3>Find the bottleneck before solving everything.</h3>
-      <p>Trus started as a huge, vague idea: you describe the software you need and AI assembles it. We started getting somewhere when we picked one problem, how long each generated piece took to appear, and worked on that first. I tend to let scope grow, so now I decide early which parts get my time and which stay small.</p>
-      <p class="aside">From: Trus</p>
-    </article>
-    <article class="item reveal" data-draft="S4">
-      <h3>Commit to a decision, then say what you’d watch.</h3>
-      <p>Most real decisions get made with incomplete data, and waiting longer usually doesn’t change that. So I pick a path and say why. Then I name the risks I can see and what I’ll check next.</p>
-      <p class="aside">From: my interview notes, and economics</p>
-    </article>
-    <article class="item reveal" data-draft="S5">
-      <h3>A problem gets fixable once you can measure it.</h3>
-      <p>At FStea I kept a spreadsheet with a row for every campus store that sold the drink. With the numbers in one place, the team could see which moves were working. I also learned to check the denominator first, because a unit price per case and a unit price per bottle are easy to mix up.</p>
-      <p class="aside">From: FStea, 2025, and Verdnt client work</p>
-    </article>
+    <div class="span" data-art="strategy">
+      <div class="entries">
+        <article class="item reveal" data-draft="S1">
+        <h3>Pitching HyperPay</h3>
+        <p>HyperPay is a payment processor in a crowded market. We looked at the cash merchants leave sitting idle and pitched a working-capital advance, which the judges liked.</p>
+        <p class="aside">From: HyperPay case competition, 2026</p>
+        </article>
+        <article class="item reveal" data-draft="S2">
+        <h3>Forge and FStea</h3>
+        <p>I built Forge, an incubator for student nonprofits, before I knew anyone wanted it, and we had to cut it back. At FStea I pushed for college students as the target customer, because the drink already fit there.</p>
+        <p class="aside">From: Homer Humanities and FStea</p>
+        </article>
+        <article class="item reveal" data-draft="S3">
+        <h3>Scoping Trus</h3>
+        <p>I tend to let scope grow, and Trus was a huge, vague idea. We made progress once we worked on one problem first, which was how long each generated piece took to appear.</p>
+        <p class="aside">From: Trus</p>
+        </article>
+        <article class="item reveal" data-draft="S4">
+        <h3>Deciding with incomplete data</h3>
+        <p>I rarely have all the data I want when I need to decide, and waiting usually doesn’t fix that. So I pick a path and say why. Then I note the risks and what I’ll check next.</p>
+        <p class="aside">From: my interview notes, and economics</p>
+        </article>
+        <article class="item reveal" data-draft="S5">
+        <h3>Tracking FStea’s campus stores</h3>
+        <p>At FStea I kept a spreadsheet with a row for every campus store that sold the drink, so the team could see which moves were working. Before comparing prices, I check whether each one is per case or per bottle.</p>
+        <p class="aside">From: FStea, 2025, and Verdnt client work</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/strategy.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
   </div>
 </section>
 
 <section class="group" id="ai" aria-labelledby="ai-label">
   <h2 class="label" id="ai-label">Tech &amp; AI</h2>
   <div class="items">
-    <p class="lede reveal" data-draft="A0">On my own time, I run a small team of AI agents that handle my coding and notes.</p>
-    <article class="item reveal" data-draft="A1">
-      <h3>Use the model to interpret, and code for anything that has to be right.</h3>
-      <p>In a quoting product, a wrong answer costs real money. A language model is good at reading a messy part description, so that’s the job I give it. The pricing math stays in plain code, with a check on top that tells me when something went wrong.</p>
-      <p class="aside">From: Camber, 2026</p>
-    </article>
-    <article class="item reveal" data-draft="A2">
-      <h3>A model can sound sure and still be wrong.</h3>
-      <p>I never let a model’s confidence decide on its own whether something ships. My Camber demo answers a deliberately vague request with “REVIEW REQUIRED” instead of guessing. I want software to say so when it isn’t sure.</p>
-      <p class="aside">From: the Camber homepage demo</p>
-    </article>
-    <article class="item reveal" data-draft="A3">
-      <h3>A tool only helps if people trust it.</h3>
-      <p>At Morgan Stanley, the agents I built were only useful once analysts understood how they worked, so I put as much effort into explaining them to non-technical colleagues as into the code. At Verdnt, every suggestion shows its sources, so anyone can check where a recommendation came from, ours included.</p>
-      <p class="aside">From: Morgan Stanley and Verdnt Group</p>
-    </article>
-    <article class="item reveal" data-draft="A4">
-      <h3>Check what should have been there and wasn’t.</h3>
-      <p>When I built my own job-search pipeline, almost every bug was a silent drop: a real posting lost to a broken source or a filter that was too strict. Checking the results didn’t catch those. Now I also check for postings that should have shown up and didn’t.</p>
-      <p class="aside">From: a personal automation project, 2026</p>
-    </article>
-    <article class="item reveal" data-draft="A5">
-      <h3>AI is a tool, and people stay responsible for it.</h3>
-      <p>I want to build AI that helps people do more, rather than AI that replaces them. In the winning Stanford policy memo I co-wrote, our part proposed short in-person checks where students explain their reasoning out loud.</p>
-      <p class="aside">From: philosophy coursework and the Stanford memo, 2026</p>
-    </article>
+    <div class="span" data-art="tech-ai">
+      <div class="entries">
+        <p class="lede reveal" data-draft="A0">On my own time, I run a small team of AI agents that handle my coding and notes.</p>
+        <article class="item reveal" data-draft="A1">
+        <h3>Pricing math in a quoting tool</h3>
+        <p>In a quoting product, a wrong answer costs real money. A language model is good at reading a messy part description, so it does that part. The pricing math is plain code, with a check that flags when something went wrong.</p>
+        <p class="aside">From: Camber, 2026</p>
+        </article>
+        <article class="item reveal" data-draft="A2">
+        <h3>Vague requests in my Camber demo</h3>
+        <p>A model can sound sure and still be wrong, so I don’t let its confidence alone decide whether something ships. When the demo gets a deliberately vague request, it answers “REVIEW REQUIRED.”</p>
+        <p class="aside">From: the Camber homepage demo</p>
+        </article>
+        <article class="item reveal" data-draft="A3">
+        <h3>Explaining the tools I build</h3>
+        <p>At Morgan Stanley, the agents I built were only useful once analysts understood how they worked. I spent as much effort explaining them to non-technical colleagues as I did on the code. At Verdnt, every suggestion shows its sources.</p>
+        <p class="aside">From: Morgan Stanley and Verdnt Group</p>
+        </article>
+        <article class="item reveal" data-draft="A4">
+        <h3>Silent drops in my job-search pipeline</h3>
+        <p>Almost every bug in the job-search pipeline I built was a silent drop. A source broke or a filter was too strict, and a real posting never showed up. Reading the results didn’t catch these, so I started checking for postings that should have been there.</p>
+        <p class="aside">From: a personal automation project, 2026</p>
+        </article>
+        <article class="item reveal" data-draft="A5">
+        <h3>The Stanford memo</h3>
+        <p>I want to build AI that helps people do more. In the winning Stanford policy memo I co-wrote, our part proposed short in-person checks where students explain their reasoning out loud.</p>
+        <p class="aside">From: philosophy coursework and the Stanford memo, 2026</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/tech-ai.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
   </div>
 </section>
 
 <section class="group" id="values" aria-labelledby="values-label">
   <h2 class="label" id="values-label">Values</h2>
   <div class="items">
-    <article class="item reveal" data-draft="V1" hidden>
-      <h3>Consistent, unglamorous work compounds.</h3>
-      <p>Volunteering with the Ethical Culture Society, I wrote cards, made sandwiches and helped with donation drives. I found I do some of my best work as a reliable teammate, when someone else is in charge.</p>
-      <p class="aside">From: volunteering in Silicon Valley</p>
-    </article>
-    <article class="item reveal" data-draft="V2">
-      <h3>Finish what you start.</h3>
-      <p>At work I care about doing my own part properly and about the people I work with. I also try to carry ideas and commitments all the way through. When something goes wrong, I tell the right person early and say what I plan to do.</p>
-      <p class="aside">From: my interview notes</p>
-    </article>
-    <article class="item reveal" data-draft="V3" hidden>
-      <h3>No fate, only action and reaction.</h3>
-      <p>That’s the rule in Statesman, the board game I designed. It’s also close to how I think about my own choices. My philosophy essays keep coming back to the idea that a choice can be voluntary and still shaped by past experience. Schopenhauer put it this way: “Man can do what he wills but he cannot will what he wills.”</p>
-      <p class="aside">From: Statesman and my essays on free will</p>
-    </article>
-    <article class="item reveal" data-draft="V4">
-      <h3>Watch the tape.</h3>
-      <p>When I coached karate, I filmed my students’ sparring rounds and went through them technique by technique, looking for the one thing to fix. I go through a spreadsheet the same way now.</p>
-      <p class="aside">From: coaching at Okaigan Karate</p>
-    </article>
-    <article class="item reveal" data-draft="V5" hidden>
-      <h3>What I put first.</h3>
-      <p>When I wrote down what I value most, I named three things: the people close to me, my health, and the work.</p>
-      <p class="aside">From: a note to myself, 2026</p>
-    </article>
+    <div class="span" data-art="values">
+      <div class="entries">
+        <article class="item reveal" data-draft="V1" hidden>
+        <h3>Volunteering</h3>
+        <p>I do my best work as a reliable teammate whether or not I’m the one in charge. With the Ethical Culture Society, I wrote cards, made sandwiches and helped with donation drives.</p>
+        <p class="aside">From: volunteering in Silicon Valley</p>
+        </article>
+        <article class="item reveal" data-draft="V2">
+        <h3>Following through</h3>
+        <p>I care about doing my own part well and about the people I work with, and I try to carry ideas and commitments all the way through. When something goes wrong, I tell the right person early and say what I plan to do.</p>
+        <p class="aside">From: my interview notes</p>
+        </article>
+        <article class="item reveal" data-draft="V3" hidden>
+        <h3>Free will and Statesman</h3>
+        <p>The rule in Statesman, my board game, is “no fate, only action and reaction.” I think about my own choices roughly the same way. My philosophy essays keep coming back to the idea that a choice can be voluntary and still be shaped by past experience. Schopenhauer wrote, “Man can do what he wills but he cannot will what he wills.”</p>
+        <p class="aside">From: Statesman and my essays on free will</p>
+        </article>
+        <article class="item reveal" data-draft="V4">
+        <h3>Sparring footage</h3>
+        <p>I go through a spreadsheet the way I went through my students’ sparring rounds when I coached karate. I filmed each round and watched it technique by technique, looking for the one thing to fix.</p>
+        <p class="aside">From: coaching at Okaigan Karate</p>
+        </article>
+        <article class="item reveal" data-draft="V5" hidden>
+        <h3>What I value most</h3>
+        <p>When I wrote it down, I listed the people close to me, my health and the work.</p>
+        <p class="aside">From: a note to myself, 2026</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/values.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
   </div>
 </section>
 
 <section class="group" id="books" aria-labelledby="books-label">
   <h2 class="label" id="books-label">Books</h2>
   <div class="items">
-    <p class="lede reveal" data-draft="B0">The unread books on my shelf are a reminder of what I don’t know and might yet discover. These are the ones I’ve read and still think about, with a note on what I took from each.</p>
-    <article class="item reveal" data-draft="B1" hidden>
-      <h3><cite>My Brilliant Friend</cite></h3>
-      <p>No legal or family tie holds Elena and Lila together. They keep choosing the friendship, over and over. Ferrante makes what they leave unsaid as loud as what they say.</p>
-      <p class="aside">Elena Ferrante · my favorite novel</p>
-    </article>
-    <article class="item reveal" data-draft="B2">
-      <h3><cite>Diagnostic Political Philosophy</cite></h3>
-      <p>Sluga asks how to decide well without the full picture, which is what governing takes when misinformation is everywhere. I ran into the same question in economics, where most real decisions get made with incomplete data.</p>
-      <p class="aside">Hans Sluga · I helped research and edit it</p>
-    </article>
-    <article class="item reveal" data-draft="B3">
-      <h3><cite>Beyond Good and Evil</cite></h3>
-      <p>I read it across a desk from Professor Sluga in our weekly meetings. He always had another question ready, so I learned to show up having read chapter twelve.</p>
-      <p class="aside">Friedrich Nietzsche · read with Hans Sluga</p>
-    </article>
-    <article class="item reveal" data-draft="B4">
-      <h3><cite>The Order of Things</cite></h3>
-      <p>I helped build more than 200 pages of material for Sluga’s graduate seminar on it. Writing for graduate students, I had to break each hard idea into steps someone else could follow.</p>
-      <p class="aside">Michel Foucault · seminar material</p>
-    </article>
-    <article class="item reveal" data-draft="B5">
-      <h3>Three books on meritocracy</h3>
-      <p>I read them side by side for a Stanford writing class. Together they show how often institutions redefine merit, and how much the definition decides who wins. Kirn also writes about the gap between performing competence and having it. I still haven’t settled what merit should be.</p>
-      <p class="aside">Sandel, <cite>The Tyranny of Merit</cite> · Markovits, <cite>The Meritocracy Trap</cite> · Kirn, <cite>Lost in the Meritocracy</cite></p>
-    </article>
-    <article class="item reveal" data-draft="B6">
-      <h3><cite>Republic</cite> and <cite>Apology</cite></h3>
-      <p>What I took from them was the allegory of the cave and the case for the examined life. Plato’s city run by philosopher-kings became the premise of Statesman, the board game I designed.</p>
-      <p class="aside">Plato · UChicago summer program, 2022</p>
-    </article>
-    <p class="more reveal"><a href="/bookshelf/">Browse the Bookshelf: 20 suggested reads in philosophy and business, sorted into tiers.</a></p>
+    <div class="span" data-art="books">
+      <div class="entries">
+        <p class="lede reveal" data-draft="B0">Books I’ve read and still think about.</p>
+        <article class="item reveal" data-draft="B1" hidden>
+        <h3><cite>My Brilliant Friend</cite></h3>
+        <p>Elena and Lila have no family or legal tie, and they keep choosing to stay friends. Ferrante gives a lot of weight to what they leave unsaid.</p>
+        <p class="aside">Elena Ferrante · my favorite novel</p>
+        </article>
+        <article class="item reveal" data-draft="B2">
+        <h3><cite>Diagnostic Political Philosophy</cite></h3>
+        <p>Sluga asks how to make good decisions without the full picture, especially in politics with a lot of misinformation around. Economics raised the same question for me.</p>
+        <p class="aside">Hans Sluga · I helped research and edit it</p>
+        </article>
+        <article class="item reveal" data-draft="B3">
+        <h3><cite>Beyond Good and Evil</cite></h3>
+        <p>I read it in weekly meetings across a desk from Professor Sluga. He always had another question, so I made sure I’d done the reading before I came in.</p>
+        <p class="aside">Friedrich Nietzsche · read with Hans Sluga</p>
+        </article>
+        <article class="item reveal" data-draft="B4">
+        <h3><cite>The Order of Things</cite></h3>
+        <p>I helped build more than 200 pages of material for Sluga’s graduate seminar on it. I broke hard ideas into steps a graduate student could follow.</p>
+        <p class="aside">Michel Foucault · seminar material</p>
+        </article>
+        <article class="item reveal" data-draft="B5">
+        <h3>Three books on meritocracy</h3>
+        <p>I read them side by side for a Stanford writing class, and I still don’t know what merit should be. In all three, institutions keep changing what counts as merit, and the definition decides who wins. Kirn also writes about the gap between performing competence and having it.</p>
+        <p class="aside">Sandel, <cite>The Tyranny of Merit</cite> · Markovits, <cite>The Meritocracy Trap</cite> · Kirn, <cite>Lost in the Meritocracy</cite></p>
+        </article>
+        <article class="item reveal" data-draft="B6">
+        <h3><cite>Republic</cite> and <cite>Apology</cite></h3>
+        <p>Statesman, the board game I designed, is based on Plato’s city run by philosopher-kings. I also still think about the allegory of the cave and the case for the examined life.</p>
+        <p class="aside">Plato · UChicago summer program, 2022</p>
+        </article>
+        <p class="more reveal"><a href="/bookshelf/">The Bookshelf has 20 suggested reads in philosophy and business, sorted into tiers.</a></p>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/books.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
   </div>
 </section>
 
 <section class="group" id="about" aria-labelledby="about-label">
   <h2 class="label" id="about-label">About</h2>
   <div class="items">
-    <div class="row">
-      <div class="item reveal">
+    <div class="span" data-art="portrait">
+      <div class="entries">
+        <div class="item reveal">
         <p class="lede">I study economics at Stanford, with interests in computer science and philosophy. I like understanding what people value and how they put ideas to use.</p>
+        </div>
       </div>
-      <figure class="card reveal"><div class="thumb photo"><img src="/assets/janus-tsen.jpeg" alt="Janus Tsen" width="926" height="846" loading="lazy"></div><figcaption><span>Janus Tsen</span><span>Stanford</span></figcaption></figure>
+      <figure class="art"><img src="/assets/drawings/portrait.svg" alt="Line drawing of Janus Tsen" width="800" height="1000" loading="lazy" decoding="async"></figure>
     </div>
-    <article class="item reveal">
-      <h3>Writing &amp; ideas</h3>
-      <p>I wrote <em>Philosoteen</em> for the Los Altos Town Crier, exploring philosophy in everyday life. I also co-authored Stanford’s winning 2026 policy memo on learning and assessment in the age of AI.</p>
-      <p class="links"><a href="https://bloximages.newyork1.vip.townnews.com/losaltosonline.com/content/tncms/assets/v3/editorial/5/69/569902b0-e3e9-11ed-aa84-cf8a4e9614fd/6448a6347fac9.pdf.pdf" target="_blank" rel="noopener noreferrer">First column (PDF)</a> · <a href="https://college.stanford.edu/courses/citizenship/citizenship-21st-century-winning-policy-memo" target="_blank" rel="noopener noreferrer">Stanford memo</a></p>
-    </article>
-    <article class="item reveal">
-      <h3>Homer Humanities</h3>
-      <p>Co-founded an international platform for young writers and artists, with competitions and print anthologies.</p>
-    </article>
-    <article class="item reveal">
-      <h3>Karate</h3>
-      <p>National champion, four-time national medalist, and instructor.</p>
-    </article>
+    <div class="span" data-art="writing">
+      <div class="entries">
+        <article class="item reveal">
+        <h3>Writing &amp; ideas</h3>
+        <p>I wrote <em>Philosoteen</em>, a column about philosophy in everyday life, for the Los Altos Town Crier. I also co-authored Stanford’s winning 2026 policy memo on learning and assessment in the age of AI.</p>
+        <p class="links"><a href="https://bloximages.newyork1.vip.townnews.com/losaltosonline.com/content/tncms/assets/v3/editorial/5/69/569902b0-e3e9-11ed-aa84-cf8a4e9614fd/6448a6347fac9.pdf.pdf" target="_blank" rel="noopener noreferrer">First column (PDF)</a> · <a href="https://college.stanford.edu/courses/citizenship/citizenship-21st-century-winning-policy-memo" target="_blank" rel="noopener noreferrer">Stanford memo</a></p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/writing.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
+    <div class="span" data-art="homer">
+      <div class="entries">
+        <article class="item reveal">
+        <h3>Homer Humanities</h3>
+        <p>Co-founded an international platform for young writers and artists, with competitions and print anthologies.</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/homer.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
+    <div class="span" data-art="karate">
+      <div class="entries">
+        <article class="item reveal">
+        <h3>Karate</h3>
+        <p>National champion, four-time national medalist, and instructor.</p>
+        </article>
+      </div>
+      <figure class="art" aria-hidden="true"><img src="/assets/drawings/karate.svg" alt="" width="800" height="1000" loading="lazy" decoding="async"></figure>
+    </div>
   </div>
 </section>
 </main>
 
 <footer class="footer">
-  <p>Want to chat? <a href="mailto:janustsen@outlook.com">Get in touch.</a></p>
+  <p><a href="mailto:janustsen@outlook.com">Email me</a> if you want to talk.</p>
   <p class="footer-links"><a href="mailto:janustsen@outlook.com">Email</a> <span aria-hidden="true">//</span> <a href="https://www.linkedin.com/in/janustsen" target="_blank" rel="noopener noreferrer">LinkedIn</a> <span aria-hidden="true">/</span> <a href="https://github.com/janustsen" target="_blank" rel="noopener noreferrer">GitHub</a> <span aria-hidden="true">/</span> <a href="https://x.com/janustsen" target="_blank" rel="noopener noreferrer">X</a> <span aria-hidden="true">//</span> <a href="/bookshelf/">Bookshelf</a></p>
 </footer>
 </div>

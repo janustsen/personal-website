@@ -9,11 +9,50 @@ const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH 
 const drafts = ['S1', 'S2', 'S3', 'S4', 'S5', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'V1', 'V2', 'V3', 'V4', 'V5', 'B0', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6'];
 const heldBack = ['V1', 'V3', 'V5', 'B1'];
 const results = [];
+// Pinned rails, scroll-scrubbed drawing and the condensed header bar.
+async function railChecks(context, name, pinned, animated) {
+  const page = await context.newPage();
+  await page.goto(base, { waitUntil: 'networkidle' });
+  // Jump instantly so every measurement is taken at rest, not mid smooth-scroll.
+  await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
+  const bar = page.locator('.bar');
+  assert.equal(await bar.evaluate(el => el.classList.contains('on')), false, 'Bar hidden while the header shows');
+  const span = page.locator('.span[data-art="strategy"]');
+  const fig = span.locator('.art');
+  await span.scrollIntoViewIfNeeded();
+  await page.waitForFunction(() => document.querySelector('.span[data-art="strategy"] .art svg'));
+  const at = async t => {
+    await page.evaluate(t => { const s = document.querySelector('.span[data-art="strategy"]'); const f = s.querySelector('.art');
+      const pin = parseFloat(getComputedStyle(f).top) || 0; scrollTo(0, scrollY + s.getBoundingClientRect().top - pin + t * (s.offsetHeight - f.offsetHeight)); }, t);
+    await page.waitForTimeout(250);
+    return page.evaluate(() => { const f = document.querySelector('.span[data-art="strategy"] .art'); const l = document.querySelector('#strategy-label');
+      return { top: f.getBoundingClientRect().top, label: l.getBoundingClientRect().top, pin: parseFloat(getComputedStyle(f).top), position: getComputedStyle(f).position,
+        p: parseFloat(getComputedStyle(f).getPropertyValue('--p')) || 1, drawing: f.classList.contains('drawing'), bar: document.querySelector('.bar').classList.contains('on'),
+        barBottom: document.querySelector('.bar').getBoundingClientRect().bottom, current: document.querySelector('.bar [aria-current]')?.textContent }; });
+  };
+  const a = await at(0.1), b = await at(0.6), c = await at(1.4);
+  assert.ok(a.bar && a.current === 'Thinking', `${name}: bar shows and marks Thinking (${JSON.stringify(a)})`);
+  if (!pinned) {
+    assert.equal(a.position, 'static', 'Phone: no pinned rails');
+  } else {
+    assert.ok(Math.abs(a.top - a.pin) < 2 && Math.abs(b.top - b.pin) < 2, `${name}: drawing pinned while entries scroll`);
+    assert.ok(Math.abs(a.label - a.pin) < 2 && Math.abs(b.label - b.pin) < 2, `${name}: section label pinned`);
+    assert.ok(a.pin >= a.barBottom, `${name}: rails sit below the bar`);
+    assert.ok(c.top < c.pin - 40, `${name}: drawing releases at the end of its span`);
+    if (animated) assert.ok(a.drawing && a.p < b.p && b.p < 1, `${name}: strokes draw in with scroll (${a.p} < ${b.p})`);
+    else assert.ok(!a.drawing, `${name}: reduced motion shows drawings fully drawn`);
+  }
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.waitForTimeout(500);
+  assert.equal(await bar.evaluate(el => el.classList.contains('on')), false, `${name}: bar expands back into the header at the top`);
+  await page.close();
+  results.push({ rails: name, status: 'passed' });
+}
 const noOverflow = page => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
 try {
   for (const scenario of [
     { name: 'desktop', viewport: { width: 1440, height: 1000 } },
-    { name: 'phone', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true },
+    { name: 'phone', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
     { name: 'compact', viewport: { width: 360, height: 640 }, isMobile: true, hasTouch: true },
     { name: 'reduced', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' },
     { name: 'no-js', viewport: { width: 390, height: 844 }, javaScriptEnabled: false },
@@ -57,8 +96,12 @@ try {
     }
     await page.waitForTimeout(900);
     assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0, 'Everything is visible after scrolling');
-    assert.ok(await page.locator('#about img').evaluate(img => img.complete && img.naturalWidth > 0), 'Headshot loads');
-    assert.deepEqual(await page.locator('.thumb.drawing img').evaluateAll(imgs => imgs.map(img => img.complete && img.naturalWidth > 0)), [true, true, true], 'Line drawings load');
+    assert.ok(await page.locator('.mark').evaluate(img => img.complete && img.currentSrc.endsWith(devicePixelRatio >= 2 ? '/avatar-88.webp' : '/avatar-44.webp') && img.alt === 'Janus Tsen'), 'Avatar mark loads as WebP, sharp at the screen density');
+    // Every span's drawing is on the page: inline SVG strokes with JavaScript, the image file without it.
+    await page.waitForFunction(js => [...document.querySelectorAll('.art')].every(fig => js ? fig.querySelectorAll('svg path').length > 0 : fig.querySelector('img').complete && fig.querySelector('img').naturalWidth > 0), name !== 'no-js');
+    assert.equal(await page.locator('.art').count(), 16, 'Every span has a drawing');
+    await page.waitForFunction(() => { const path = [...document.querySelectorAll('.art')].pop().querySelector('svg path:last-of-type');
+      return !path || parseFloat(getComputedStyle(path).strokeDashoffset) === 0; }, null, { timeout: 6000 });
     assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Links carry no arrow glyphs');
     await page.screenshot({ path: join(evidence, `${name}-home-full.png`), fullPage: true });
 
@@ -67,7 +110,7 @@ try {
     await page.locator('.jump').getByRole('link', { name: 'Experience' }).click();
     await page.waitForURL(`${base}#experience`);
     for (let attempt = 0; attempt < 50 && Math.abs(await page.locator('#experience').evaluate(el => el.getBoundingClientRect().top)) >= 4; attempt++) await page.waitForTimeout(100);
-    assert.ok(await page.locator('#experience').evaluate(el => Math.abs(el.getBoundingClientRect().top) < 4), 'Jump link lands on its section');
+    assert.ok(await page.locator('#experience').evaluate(el => Math.abs(el.getBoundingClientRect().top - parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop)) < 4), 'Jump link lands on its section, below the bar');
     for (const id of ['verdnt', 'trus']) {
       const summary = page.locator(`#${id} summary`);
       await summary.click();
@@ -100,11 +143,11 @@ try {
     assert.equal(await book.getAttribute('open'), '', 'Opening another book must keep existing notes open');
     await otherBook.locator('summary').click();
     if (name !== 'no-js') {
-      await book.locator('.book-tier').selectOption('C');
-      await book.locator('.book-state').selectOption('reading');
+      assert.equal(await page.locator('.book select, .book-controls').count(), 0, 'Books have no tier or status menus');
+      await book.locator('summary').focus();
+      await page.keyboard.press('c');
       await page.reload({ waitUntil: 'networkidle' });
-      assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'C');
-      assert.equal(await book.locator('.book-state').inputValue(), 'reading');
+      assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'C', 'Keyboard move persists');
       await page.locator('#book-search').fill('Rumelt');
       assert.equal(await page.locator('.book:visible').count(), 1);
       await page.locator('#book-topic').selectOption('Philosophy');
@@ -112,7 +155,6 @@ try {
       await page.getByRole('button', { name: 'Reset shelf' }).click();
       assert.equal(await page.locator('.book:visible').count(), 20);
       assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'S');
-      assert.equal(await book.locator('.book-state').inputValue(), 'unset');
       if (name === 'desktop') {
         await book.locator('summary').dragTo(page.locator('.tier[data-tier="A"] .tier-label'));
         assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'A');
@@ -129,8 +171,18 @@ try {
     await page.waitForURL(base);
 
     assert.deepEqual(errors, []);
-    results.push({ scenario: name, status: 'passed', reveal: animated ? 'on scroll' : 'static', drafts: `${drafts.length - heldBack.length} shown, ${heldBack.length} held back`, bookshelf: name === 'no-js' ? 'native details' : 'tiers, status, filter, reset', overflow: false, errors });
+    results.push({ scenario: name, status: 'passed', reveal: animated ? 'on scroll' : 'static', drafts: `${drafts.length - heldBack.length} shown, ${heldBack.length} held back`, bookshelf: name === 'no-js' ? 'native details' : 'tiers, keyboard moves, filter, reset', overflow: false, errors });
     await context.close();
+  }
+  for (const [label, options, pinned, animated] of [
+    ['desktop', { viewport: { width: 1440, height: 1000 } }, true, true],
+    ['tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true }, true, true],
+    ['phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, false, true],
+    ['reduced-desktop', { viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }, true, false],
+  ]) {
+    const railContext = await browser.newContext(options);
+    await railChecks(railContext, label, pinned, animated);
+    await railContext.close();
   }
   // A reduced-motion preference set after load still shows every section.
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
