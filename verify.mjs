@@ -66,7 +66,7 @@ try {
     await page.evaluate(() => scrollTo(0, 0));
     await page.locator('.jump').getByRole('link', { name: 'Experience' }).click();
     await page.waitForURL(`${base}#experience`);
-    await page.waitForTimeout(600);
+    for (let attempt = 0; attempt < 50 && Math.abs(await page.locator('#experience').evaluate(el => el.getBoundingClientRect().top)) >= 4; attempt++) await page.waitForTimeout(100);
     assert.ok(await page.locator('#experience').evaluate(el => Math.abs(el.getBoundingClientRect().top) < 4), 'Jump link lands on its section');
     for (const id of ['verdnt', 'trus']) {
       const summary = page.locator(`#${id} summary`);
