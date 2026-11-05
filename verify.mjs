@@ -8,8 +8,84 @@ await mkdir(evidence, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : chromium.executablePath()), headless: true });
 const heldBack = ['V1', 'V3', 'V5', 'B1'];
 const results = [];
+// The first-visit intro plays once per tab session; the page checks below start from the settled page.
+const skipIntro = () => { try { sessionStorage.setItem('intro', '1'); } catch {} };
+// First-visit intro: the picture and greeting alone, then on a scroll, key or swipe (or after about 3 seconds)
+// the page reorders into place. A reload or a deep link lands straight on the page.
+async function introChecks(name, options, trigger) {
+  const context = await browser.newContext(options);
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(base);
+  const state = () => page.evaluate(() => ({ on: document.documentElement.classList.contains('intro-on'), stage: !!document.querySelector('.intro-stage'),
+    page: getComputedStyle(document.querySelector('.page')).opacity, h1: getComputedStyle(document.querySelector('.identity h1')).visibility }));
+  if (trigger === 'none') {
+    assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible' }, `${name}: no intro without JavaScript`);
+    await context.close();
+    results.push({ intro: name, status: 'passed', shown: false });
+    return;
+  }
+  const still = options.reducedMotion === 'reduce';
+  await page.waitForTimeout(1600);
+  assert.deepEqual(await state(), { on: true, stage: true, page: '0', h1: 'hidden' }, `${name}: only the intro shows on a first visit`);
+  const hold = await page.evaluate(() => ({ hi: document.querySelector('.intro-hi').textContent, face: document.querySelector('.intro-face').naturalWidth > 0,
+    moving: document.querySelector('.intro-stage').getAnimations({ subtree: true }).filter(a => a.playState === 'running').length }));
+  assert.ok(hold.hi === 'Hey, I’m Janus!' && hold.face, `${name}: picture and greeting (${JSON.stringify(hold)})`);
+  if (still) assert.equal(hold.moving, 0, `${name}: reduced motion keeps the intro still`);
+  await page.screenshot({ path: join(evidence, `intro-${name}-1-start.png`) });
+  // While the intro runs the page must not scroll or overflow sideways (a phone would zoom out).
+  await page.evaluate(() => { window.introWatch = { wide: 0, scrolled: 0 }; const tick = () => { const w = window.introWatch;
+    w.wide = Math.max(w.wide, document.documentElement.scrollWidth - innerWidth); w.scrolled = Math.max(w.scrolled, scrollY);
+    if (document.documentElement.classList.contains('intro-on')) requestAnimationFrame(tick); }; tick(); });
+  const { width, height } = options.viewport;
+  if (trigger === 'wheel') { await page.mouse.move(width / 2, height / 2); await page.mouse.wheel(0, 600); }
+  if (trigger === 'key') await page.keyboard.press('PageDown');
+  if (trigger === 'touch') await (await context.newCDPSession(page)).send('Input.synthesizeScrollGesture', { x: width / 2, y: height * 0.7, yDistance: -300, gestureSourceType: 'touch' });
+  const fired = await page.evaluate(() => performance.now());
+  if (!still) {
+    await page.waitForFunction(() => document.documentElement.classList.contains('intro-deal'), null, { timeout: 4000 });
+    await page.waitForTimeout(500);
+    assert.ok(await page.locator('.contact').evaluate(el => el.getAnimations().length === 1), `${name}: header links are dealt into place`);
+    await page.screenshot({ path: join(evidence, `intro-${name}-2-mid.png`) });
+  }
+  const ended = await (await page.waitForFunction(() => !document.documentElement.classList.contains('intro-on') && performance.now(), null, { timeout: 6000, polling: 'raf' })).jsonValue();
+  if (trigger === 'auto') assert.ok(ended > 4000 && ended < 6500, `${name}: auto-advances after about 3 seconds (settled at ${Math.round(ended)} ms)`);
+  else assert.ok(ended - fired < (still ? 600 : 2300), `${name}: reorder plays as one short burst (${Math.round(ended - fired)} ms)`);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: join(evidence, `intro-${name}-3-settled.png`) });
+  assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible' }, `${name}: the page is fully back`);
+  const settled = await page.evaluate(() => ({ watch: window.introWatch, scrollY,
+    moved: [...document.querySelectorAll('.contact, .jump, .label, .opening > *, .item, .art')].filter(el => getComputedStyle(el).transform !== 'none' && !el.matches('.reveal:not(.in)')).length,
+    hidden: [...document.querySelectorAll('.reveal')].filter(el => el.getBoundingClientRect().top < innerHeight && getComputedStyle(el).opacity !== '1').length,
+    mark: getComputedStyle(document.querySelector('.mark')).visibility }));
+  assert.deepEqual(settled, { watch: { wide: 0, scrolled: 0 }, scrollY: 0, moved: 0, hidden: 0, mark: 'visible' }, `${name}: settled into the normal layout`);
+  // The normal page works after the intro: the portrait draws in with scroll and the bar takes over.
+  await page.waitForFunction(() => document.querySelector('#about .art svg'));
+  const drawn = () => page.locator('#about .art').evaluate(f => f.classList.contains('drawing') ? parseFloat(getComputedStyle(f).getPropertyValue('--p')) : 1);
+  const before = await drawn();
+  await page.mouse.move(width / 2, height / 2);
+  await page.mouse.wheel(0, height * 0.6);
+  await page.waitForTimeout(700);
+  const after = await drawn();
+  assert.ok(await page.evaluate(() => scrollY > 0), `${name}: the page scrolls after the intro`);
+  assert.ok(still ? after === 1 : after > before, `${name}: portrait draws in with scroll after the intro (${before} -> ${after})`);
+  await page.evaluate(() => scrollTo(0, 1600));
+  await page.waitForTimeout(500);
+  assert.ok(await page.locator('.bar').evaluate(el => el.classList.contains('on')), `${name}: header bar takes over after the intro`);
+  // Repeat visit in the same tab, and a deep link in a new one, land straight on the page.
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal((await state()).on, false, `${name}: no intro on a repeat visit`);
+  const deep = await context.newPage();
+  await deep.goto(new URL('#building', base).href, { waitUntil: 'networkidle' });
+  assert.equal(await deep.evaluate(() => document.documentElement.classList.contains('intro-on')), false, `${name}: no intro on a deep link`);
+  assert.deepEqual(errors, []);
+  await context.close();
+  results.push({ intro: name, status: 'passed', trigger, reorderMs: trigger === 'auto' ? null : Math.round(ended - fired), autoSettledMs: trigger === 'auto' ? Math.round(ended) : null });
+}
 // Pinned rails, scroll-scrubbed drawing and the condensed header bar.
 async function railChecks(context, name, pinned, animated) {
+  await context.addInitScript(skipIntro);
   const page = await context.newPage();
   await page.goto(base, { waitUntil: 'networkidle' });
   // Jump instantly so every measurement is taken at rest, not mid smooth-scroll.
@@ -107,6 +183,7 @@ try {
     const { name, ...options } = scenario;
     const animated = name !== 'reduced' && name !== 'no-js';
     const context = await browser.newContext(options);
+    await context.addInitScript(skipIntro);
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -217,6 +294,14 @@ try {
     results.push({ scenario: name, status: 'passed', reveal: animated ? 'on scroll' : 'static', heldBack: heldBack.length, bookshelf: name === 'no-js' ? 'native details' : 'tiers, keyboard moves, filter, reset', overflow: false, errors });
     await context.close();
   }
+  for (const [name, options, trigger] of [
+    ['desktop', { viewport: { width: 1440, height: 1000 } }, 'wheel'],
+    ['tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true }, 'key'],
+    ['phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 'touch'],
+    ['compact-auto', { viewport: { width: 360, height: 640 }, isMobile: true, hasTouch: true }, 'auto'],
+    ['reduced', { viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }, 'wheel'],
+    ['no-js', { viewport: { width: 390, height: 844 }, javaScriptEnabled: false }, 'none'],
+  ]) await introChecks(name, options, trigger);
   for (const [label, options, pinned, animated] of [
     ['desktop', { viewport: { width: 1440, height: 1000 } }, true, true],
     ['tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true }, true, true],
@@ -229,6 +314,7 @@ try {
   }
   // A reduced-motion preference set after load still shows every section.
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  await context.addInitScript(skipIntro);
   const page = await context.newPage();
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.emulateMedia({ reducedMotion: 'reduce' });

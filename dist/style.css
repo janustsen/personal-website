@@ -92,6 +92,28 @@ details[open]>summary::after{content:" −"}
 @keyframes note-open{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}a{transition:none}.bar{transition:none}}
 
+/* First-visit intro (see README.md): the head script adds .intro-on, site.js plays it and removes it.
+   If the script never runs, the page shows after 8 seconds anyway. Cards fly in from below the screen and spring
+   past their slots; clipping keeps the page from widening, which would make phones zoom out mid-flight. */
+:is(.intro-on,.intro-on body){overflow-x:clip}
+.intro-on:not(.intro-deal) .page{opacity:0;animation:intro-safety 1ms 8s forwards}
+.intro-on:not(.intro-landed) :is(.identity h1,.mark){visibility:hidden}
+@keyframes intro-safety{to{opacity:1}}
+.intro-stage{position:fixed;inset:0;z-index:20;--face:160px}
+.intro-deal .intro-stage{pointer-events:none}
+.intro-stage>*{position:absolute;left:50%;margin:0}
+.intro-face{top:31%;width:var(--face);height:var(--face);translate:-50% -50%;border-radius:50%;object-fit:cover}
+.intro-hello{top:51%;translate:-50% -50%;display:grid;place-items:center}
+.intro-hello>span{grid-area:1/1;white-space:nowrap}
+.intro-hi{font:400 56px/1.15 var(--serif)}
+.intro-hi span{display:inline-block}
+.intro-name{font:400 34px/1 var(--caps);text-transform:uppercase;letter-spacing:.02em;opacity:0}
+.intro-cue{bottom:6%;translate:-50% 0;font:400 14px/1 var(--caps);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);text-align:center}
+.intro-cue b{display:block;font-weight:400;font-size:22px;margin-top:6px}
+@media(prefers-reduced-motion:no-preference){.intro-cue{animation:intro-bob .52s ease-in-out infinite alternate}}
+@keyframes intro-bob{from{transform:translateY(-5px)}to{transform:translateY(5px)}}
+@media(max-width:760px){.intro-stage{--face:120px}.intro-hi{font-size:42px}}
+
 /* Tablet: share the row more evenly so the drawing still fills a real column. */
 @media(min-width:761px) and (max-width:1100px){.span{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);column-gap:2rem}.entries>.item:first-child h3::after{margin-right:-2rem}}
 @media(max-width:760px){
