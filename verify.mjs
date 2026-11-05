@@ -17,11 +17,14 @@ async function introChecks(name, options, trigger) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
+  // A blocked site.js must not leave the page hidden: the head script drops the intro after 4 seconds.
+  if (trigger === 'blocked') await page.route('**/site.js', route => route.abort());
   await page.goto(base);
   const state = () => page.evaluate(() => ({ on: document.documentElement.classList.contains('intro-on'), stage: !!document.querySelector('.intro-stage'),
     page: getComputedStyle(document.querySelector('.page')).opacity, h1: getComputedStyle(document.querySelector('.identity h1')).visibility }));
-  if (trigger === 'none') {
-    assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible' }, `${name}: no intro without JavaScript`);
+  if (trigger === 'blocked') await page.waitForTimeout(4500);
+  if (trigger === 'none' || trigger === 'blocked') {
+    assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible' }, `${name}: ${trigger === 'blocked' ? 'page shows once a blocked site.js cancels the intro' : 'no intro without JavaScript'}`);
     await context.close();
     results.push({ intro: name, status: 'passed', shown: false });
     return;
@@ -301,6 +304,7 @@ try {
     ['compact-auto', { viewport: { width: 360, height: 640 }, isMobile: true, hasTouch: true }, 'auto'],
     ['reduced', { viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }, 'wheel'],
     ['no-js', { viewport: { width: 390, height: 844 }, javaScriptEnabled: false }, 'none'],
+    ['site-js-blocked', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, 'blocked'],
   ]) await introChecks(name, options, trigger);
   for (const [label, options, pinned, animated] of [
     ['desktop', { viewport: { width: 1440, height: 1000 } }, true, true],

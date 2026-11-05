@@ -92,9 +92,9 @@ details[open]>summary::after{content:" −"}
 @keyframes note-open{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}a{transition:none}.bar{transition:none}}
 
-/* First-visit intro (see README.md): the head script adds .intro-on, site.js plays it and removes it.
-   If the script never runs, the page shows after 8 seconds anyway. Cards fly in from below the screen and spring
-   past their slots; clipping keeps the page from widening, which would make phones zoom out mid-flight. */
+/* First-visit intro and fallback behavior: see README.md.
+   Cards fly in from below the screen and spring past their slots; clipping keeps the page
+   from widening, which would make phones zoom out mid-flight. */
 :is(.intro-on,.intro-on body){overflow-x:clip}
 .intro-on:not(.intro-deal) .page{opacity:0;animation:intro-safety 1ms 8s forwards}
 .intro-on:not(.intro-landed) :is(.identity h1,.mark){visibility:hidden}

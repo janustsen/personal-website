@@ -59,11 +59,11 @@ for (const tier of document.querySelectorAll('.tier')) {
 }
 search.addEventListener('input', filter);
 topic.addEventListener('change', filter);
+filter();
 document.querySelector('#reset-shelf').addEventListener('click', () => {
   for (const book of books) { move(book, book.dataset.defaultTier); book.open = false; }
   search.value = ''; topic.value = 'all'; filter();
   try { localStorage.removeItem(storageKey); } catch {}
   status.textContent = 'Suggested tiers restored.';
 });
-document.querySelector('.shelf-tools').hidden = false;
 document.querySelector('.shelf-help').textContent = 'I haven’t necessarily read these, and the tiers aren’t my ratings. Open a book to see a note on it. To move it, drag it to another tier, or select it and press S, A, B or C. Your changes stay in this browser.';
