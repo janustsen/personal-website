@@ -2,6 +2,8 @@
 
 A static personal website: one long homepage plus a Bookshelf page. Deploy `dist/`; no build or production dependencies. This redesign is for preview review; nothing goes live until Janus approves it.
 
+Cloudflare Pages uses `dist/404.html` for unknown URLs, with a link home. `dist/robots.txt` allows all crawlers. The homepage and Bookshelf declare their canonical URLs and Open Graph/Twitter card metadata.
+
 Preview: `python3 -u -m http.server 63027 --bind 127.0.0.1 --directory dist`.
 
 Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `npm run lint` checks JavaScript syntax for both site scripts and the verification script; `node verify.mjs` drives both pages in a real browser.
@@ -22,4 +24,4 @@ Copy follows the user's professional positioning, with public evidence links bes
 
 No private source documents, client datasets, credentials, or contact submissions are packaged.
 
-Bookshelf offers 20 sourced philosophy/business suggestions, tier drag-and-drop with a keyboard alternative (select a book and press S, A, B or C), and filtering. Book entries carry no tier or reading-status menus. Initial rankings were suggested from inferred interests; the public interface uses simple S/A/B/C labels. Changes persist only in the visitor’s browser; Reset restores the suggestions. Multiple book notes can stay open for comparison. Native book details remain available without JavaScript; moving books, filtering, and reset require JavaScript.
+Bookshelf offers 20 sourced philosophy/business suggestions, tier drag-and-drop with a keyboard alternative (select a book and press S, A, B or C), and filtering. Book entries carry no tier or reading-status menus. Initial rankings were suggested from inferred interests; the public interface uses simple S/A/B/C labels. Changes persist only in the visitor’s browser; Reset restores the suggestions. Multiple book notes can stay open for comparison. Native book details remain available without JavaScript; moving books, filtering, and reset require JavaScript. Search, topic, and reset controls reserve their space before scripts load and are hidden when JavaScript is disabled. Search and topic selections made during loading apply when the script initializes.
