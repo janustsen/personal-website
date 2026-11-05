@@ -1,6 +1,5 @@
 const books = [...document.querySelectorAll('.book')];
 const tiers = ['S', 'A', 'B', 'C'];
-const states = ['unset', 'want', 'reading', 'finished'];
 const status = document.querySelector('#shelf-status');
 const search = document.querySelector('#book-search');
 const topic = document.querySelector('#book-topic');
@@ -9,15 +8,13 @@ let dragged = null;
 
 function move(book, tier) {
   document.querySelector(`.tier[data-tier="${tier}"] .tier-books`).append(book);
-  book.querySelector('.book-tier').value = tier;
 }
+const tierOf = book => book.closest('.tier').dataset.tier;
 function save() {
-  const data = Object.fromEntries(books.map(book => [book.dataset.book, {
-    tier: book.querySelector('.book-tier').value, state: book.querySelector('.book-state').value
-  }]));
+  const data = Object.fromEntries(books.map(book => [book.dataset.book, { tier: tierOf(book) }]));
   try {
     localStorage.setItem(storageKey, JSON.stringify(data));
-    status.textContent = 'Your arrangement is saved in this browser. It does not change Janus’s public shelf.';
+    status.textContent = 'Your arrangement is saved in this browser. It doesn’t change the public shelf.';
   } catch { status.textContent = 'Your arrangement works here, but this browser cannot save it.'; }
 }
 function filter() {
@@ -32,11 +29,9 @@ try {
   for (const book of books) {
     const entry = saved?.[book.dataset.book];
     if (tiers.includes(entry?.tier)) move(book, entry.tier);
-    if (states.includes(entry?.state)) book.querySelector('.book-state').value = entry.state;
   }
 } catch { /* Keep the suggested shelf if saved data is unavailable or invalid. */ }
 for (const book of books) {
-  book.querySelector('.book-controls').hidden = false;
   const summary = book.querySelector('summary');
   summary.draggable = true;
   summary.addEventListener('dragstart', event => {
@@ -45,10 +40,13 @@ for (const book of books) {
     event.dataTransfer.effectAllowed = 'move';
   });
   summary.addEventListener('dragend', () => { dragged = null; document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target')); });
-  book.querySelector('.book-tier').addEventListener('change', event => {
-    move(book, event.target.value); event.target.focus(); save();
+  // Keyboard alternative to dragging: select a book and press S, A, B or C.
+  summary.addEventListener('keydown', event => {
+    const tier = event.key.toUpperCase();
+    if (event.altKey || event.ctrlKey || event.metaKey || !tiers.includes(tier)) return;
+    event.preventDefault(); move(book, tier); summary.focus(); save();
+    status.textContent = `Moved to tier ${tier}.`;
   });
-  book.querySelector('.book-state').addEventListener('change', save);
 }
 for (const tier of document.querySelectorAll('.tier')) {
   tier.addEventListener('dragover', event => { if (dragged) { event.preventDefault(); tier.classList.add('drop-target'); } });
@@ -62,10 +60,10 @@ for (const tier of document.querySelectorAll('.tier')) {
 search.addEventListener('input', filter);
 topic.addEventListener('change', filter);
 document.querySelector('#reset-shelf').addEventListener('click', () => {
-  for (const book of books) { move(book, book.dataset.defaultTier); book.querySelector('.book-state').value = 'unset'; book.open = false; }
+  for (const book of books) { move(book, book.dataset.defaultTier); book.open = false; }
   search.value = ''; topic.value = 'all'; filter();
   try { localStorage.removeItem(storageKey); } catch {}
-  status.textContent = 'Suggested tiers restored. Reading statuses cleared.';
+  status.textContent = 'Suggested tiers restored.';
 });
 document.querySelector('.shelf-tools').hidden = false;
-document.querySelector('.shelf-help').textContent = 'These are reading suggestions, not a record of what I’ve read or my personal ratings. Open a book for context. Drag it to a tier, or use the tier menu inside. Your changes stay in this browser.';
+document.querySelector('.shelf-help').textContent = 'I haven’t necessarily read these, and the tiers aren’t my ratings. Open a book to see a note on it. To move it, drag it to another tier, or select it and press S, A, B or C. Your changes stay in this browser.';

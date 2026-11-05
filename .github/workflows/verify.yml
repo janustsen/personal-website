@@ -14,7 +14,7 @@ jobs:
       - run: npm ci
       - run: npx playwright-core install --with-deps chromium
       - run: npm run lint
-      - name: Verify all five pages
+      - name: Verify the site in a browser
         run: |
           python3 -m http.server 63027 --bind 127.0.0.1 --directory dist > /tmp/janus-site-server.log 2>&1 &
           for i in $(seq 1 20); do curl -fsS http://127.0.0.1:63027/ > /dev/null && break; sleep 1; done
