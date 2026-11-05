@@ -2,7 +2,7 @@
 
 ## Sub-features
 - Spans: each section is one `.span` that pairs all of its entries with a single line drawing (`/assets/drawings/<slug>.svg`, 800×1000).
-  - The eight drawings are portrait (About: Janus's own line drawing, revealed by a stroke mask that follows its ink), building, experience, strategy, values, tech-ai, design and books.
+  - The eight drawings are portrait (About: Janus's own line drawing, its face shows complete from the start; a stroke mask that follows the ink draws in the hair, collar, tie and suit), building, experience, strategy, values, tech-ai, design and books.
   - Each span is as tall as its text (or its drawing, if that is taller). A drawing stays pinned only while its section's text is beside it, then hands off to the next one. It never sits beside an empty column.
 - Rails (wider than 760px): the section label and the drawing are `position: sticky` just below the bar. They stay pinned while the entries scroll and release when the span ends.
 - Draw-in: `site.js` swaps each image for its inline SVG and gives every stroke `pathLength=1` and a start point `--d`, in file order.
