@@ -3,7 +3,7 @@
 @font-face{font-family:Inter;src:url('/assets/fonts/inter.woff2') format('woff2');font-weight:400 700;font-display:swap}
 @font-face{font-family:"Unica One";src:url('/assets/fonts/unica-one.woff2') format('woff2');font-display:swap}
 
-:root{--ink:#000;--muted:#6b6b6b;--faint:#8f8f8f;--rule:rgba(0,0,0,.15);--line:rgba(0,0,0,.3);--wash:#f4f4f2;--draft:#9a4f00;--label:3.5rem;--text:27rem;--gap:3.5rem;--bar:48px;--pin:calc(var(--bar) + 28px);--serif:"Crimson Pro",Georgia,serif;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--caps:"Unica One","Arial Narrow",sans-serif}
+:root{--ink:#000;--muted:#6b6b6b;--faint:#8f8f8f;--rule:rgba(0,0,0,.15);--line:rgba(0,0,0,.3);--wash:#f4f4f2;--label:5rem;--text:27rem;--gap:3.5rem;--bar:48px;--pin:calc(var(--bar) + 28px);--serif:"Crimson Pro",Georgia,serif;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--caps:"Unica One","Arial Narrow",sans-serif}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:calc(var(--bar) + 12px)}
 body{margin:0;background:#fff;color:var(--ink);font:14px/1.4 var(--sans);-webkit-font-smoothing:antialiased}
@@ -20,25 +20,26 @@ cite{font-style:inherit}
 /* Masthead: mark and intro on the left, name and links on the right. */
 .masthead{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"intro identity";gap:2rem;align-items:start;margin-bottom:3.5rem}
 .identity{grid-area:identity;text-align:right;padding-top:2.6rem}
-.identity h1{font:400 28px/1 var(--caps);text-transform:uppercase;letter-spacing:.02em}
+.identity h1{font:400 34px/1 var(--caps);text-transform:uppercase;letter-spacing:.02em}
 .identity h1 a{text-decoration:none}
-.contact,.jump{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 10px;margin-top:14px;font-size:12px}
-.jump{margin-top:10px;color:var(--muted)}
+.contact,.jump{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:5px 12px;margin-top:17px;font-size:14.5px}
+.jump{margin-top:12px;color:var(--muted)}
 .jump a{text-decoration-color:var(--rule)}
 .contact a,.jump a{padding:4px 0}
 .intro{grid-area:intro;max-width:31rem}
-.mark{display:block;width:44px;height:44px;border-radius:8px;object-fit:cover}
-.hero{font:300 23px/1.2 var(--serif);max-width:31rem}
-.hero+.hero{margin-top:.8rem}
+.mark{display:block;width:76px;height:76px;border-radius:13px;object-fit:cover}
+.opening .hero{font:300 23px/1.2 var(--serif);max-width:31rem}
+.opening .hero+.hero{margin-top:.8rem}
 .opening .lede{margin-top:1.5rem}
 
 /* Sections: a vertical label column that stays pinned below the bar, then the list. */
 .group{display:grid;grid-template-columns:var(--label) minmax(0,1fr);align-items:start}
 .group+.group{margin-top:3rem;padding-top:3rem;background:linear-gradient(var(--rule),var(--rule)) no-repeat var(--label) 0/calc(100% - var(--label)) 1px}
-.label{writing-mode:vertical-rl;font:400 28px/1 var(--caps);text-transform:uppercase;color:var(--faint);letter-spacing:.02em;white-space:nowrap;justify-self:start;position:sticky;top:var(--pin);align-self:start}
+.label{writing-mode:vertical-rl;font:400 42px/1 var(--caps);text-transform:uppercase;color:var(--faint);letter-spacing:.02em;white-space:nowrap;justify-self:start;position:sticky;top:var(--pin);align-self:start}
 .items{display:flex;flex-direction:column;gap:3.5rem;min-width:0}
-/* A span pairs entries with one drawing. The drawing stays pinned while the entries scroll, then releases. */
-.span{display:grid;grid-template-columns:minmax(0,var(--text)) minmax(0,1fr);column-gap:var(--gap);align-items:start;min-height:calc(100vh - var(--pin) + 22vh)}
+/* A span pairs a section's entries with its drawing. The span is as tall as the text (or the drawing, if taller),
+   so the drawing pins only while there is text beside it and releases with the section's last block. */
+.span{display:grid;grid-template-columns:minmax(0,var(--text)) minmax(0,1fr);column-gap:var(--gap);align-items:start}
 .entries{display:flex;flex-direction:column;gap:2.25rem;min-width:0}
 .item{max-width:var(--text);min-width:0}
 .item h3{font:italic 300 24px/1.2 var(--serif)}
@@ -73,7 +74,6 @@ details[open]>summary::after{content:" −"}
 .detail-body{display:flex;flex-direction:column;gap:.6rem;padding:.3rem 0 0 .9rem;border-left:1px solid var(--rule)}
 
 /* Draft approval workflow: see README.md, Design and sources. */
-[data-draft]::before{content:"Draft " attr(data-draft) " · for approval";display:block;font:400 12px/1 var(--caps);text-transform:uppercase;letter-spacing:.06em;color:var(--draft);margin-bottom:.45rem}
 
 .footer{margin:5rem auto 0;padding-top:3.5rem;border-top:1px solid var(--rule);max-width:32rem;text-align:center;font-size:14px}
 .footer-links{margin-top:1rem;display:flex;justify-content:center;flex-wrap:wrap;gap:4px 10px}
@@ -95,14 +95,16 @@ details[open]>summary::after{content:" −"}
 /* Tablet: share the row more evenly so the drawing still fills a real column. */
 @media(min-width:761px) and (max-width:1100px){.span{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);column-gap:2rem}.entries>.item:first-child h3::after{margin-right:-2rem}}
 @media(max-width:760px){
-  :root{--label:2.6rem}
+  :root{--label:3.6rem}
   .page{padding-top:3rem}
-  .masthead{grid-template-columns:1fr;grid-template-areas:"identity" "intro";gap:0;margin-bottom:3.5rem}
-  .identity{text-align:center;padding:0 0 2rem;border-bottom:1px solid var(--rule);margin-bottom:2.5rem}
-  .contact,.jump{justify-content:center}
+  .masthead{grid-template-columns:minmax(0,1fr);grid-template-areas:"identity" "intro";gap:0;margin-bottom:3.5rem}
+  .identity{min-width:0;text-align:center;padding:0 0 2rem;border-bottom:1px solid var(--rule);margin-bottom:2.5rem}
+  .contact{justify-content:center;font-size:13.5px;gap:4px 10px}
+  /* Phones: the section links stay on one row and scroll sideways, like the condensed bar. */
+  .jump{justify-content:safe center;font-size:13.5px;gap:4px 12px;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
   .mark{display:none}
-  .hero{font-size:22px}
-  .label{font-size:24px;position:static}
+  .opening .hero{font-size:22px}
+  .label{font-size:36px;position:static}
   /* Phones: the drawing sits after the section's first entry, so its own text is on screen while it draws. */
   .span{display:flex;flex-direction:column;gap:2.25rem;min-height:0}
   .entries{display:contents}

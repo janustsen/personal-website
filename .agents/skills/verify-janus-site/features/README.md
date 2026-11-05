@@ -1,7 +1,7 @@
 # Feature map
 
 - [Navigation and contact](navigation.md)
-- [Project explanations and drafted insights](projects.md)
+- [Project explanations and held-back entries](projects.md)
 - [Responsive layout and motion](responsive.md)
 
 - [Pinned rails, drawings and header bar](rails.md)

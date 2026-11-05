@@ -6,7 +6,6 @@ const base = process.env.SITE_URL || 'http://127.0.0.1:63027/';
 const evidence = process.env.EVIDENCE_DIR || 'work/verification';
 await mkdir(evidence, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : chromium.executablePath()), headless: true });
-const drafts = ['S1', 'S2', 'S3', 'S4', 'S5', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'V1', 'V2', 'V3', 'V4', 'V5', 'B0', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6'];
 const heldBack = ['V1', 'V3', 'V5', 'B1'];
 const results = [];
 // Pinned rails, scroll-scrubbed drawing and the condensed header bar.
@@ -65,6 +64,31 @@ async function railChecks(context, name, pinned, animated) {
     const done = samples.find(x => x.p >= 1);
     assert.ok(done && done.visibleText > 0 && done.artBottom > 0, `${name}: drawing completes while the section is still on screen (${JSON.stringify(samples.at(-1))})`);
   }
+  if (pinned) {
+    // Every section: a pinned drawing always has its section's text beside it, and it is complete before it releases.
+    for (const slug of await page.locator('.span').evaluateAll(spans => spans.map(sp => sp.dataset.art))) {
+      const sel = `.span[data-art="${slug}"]`;
+      await page.evaluate(sel => { const sp = document.querySelector(sel); scrollTo(0, scrollY + sp.getBoundingClientRect().top - 0.9 * innerHeight); }, sel);
+      let wasPinned = false, released = null;
+      for (let k = 0; k < 80 && !released; k++) {
+        await page.waitForTimeout(60);
+        const r = await page.evaluate(sel => {
+          const sp = document.querySelector(sel), f = sp.querySelector('.art'), pin = parseFloat(getComputedStyle(f).top);
+          const blocks = [...sp.querySelectorAll('.entries > *')].filter(el => el.getClientRects().length), last = blocks[blocks.length - 1].getBoundingClientRect();
+          const top = f.getBoundingClientRect().top;
+          return { pinned: Math.abs(top - pin) < 1.5 && sp.getBoundingClientRect().top < pin - 1, gone: top < pin - 1.5, lastBottom: last.bottom, pin,
+            p: f.classList.contains('drawing') ? parseFloat(getComputedStyle(f).getPropertyValue('--p')) : 1 };
+        }, sel);
+        if (r.pinned) { wasPinned = true; assert.ok(r.lastBottom > r.pin + 40, `${name}/${slug}: pinned drawing has its section's text beside it (${JSON.stringify(r)})`); }
+        if (r.gone) released = r;
+        // The last section can reach the page end before its drawing scrolls away; that counts as its end.
+        const moved = await page.evaluate(() => { const y = scrollY; scrollBy(0, innerHeight * 0.08); return scrollY !== y; });
+        if (!moved && !released) released = r;
+      }
+      assert.ok(released, `${name}/${slug}: drawing releases or the page ends`);
+      assert.equal(released.p, 1, `${name}/${slug}: drawing is complete before it releases`);
+    }
+  }
   await page.evaluate(() => scrollTo(0, 0));
   await page.waitForTimeout(500);
   assert.equal(await bar.evaluate(el => el.classList.contains('on')), false, `${name}: bar expands back into the header at the top`);
@@ -97,16 +121,10 @@ try {
     assert.ok(await noOverflow(page), `${name}: no horizontal overflow at load`);
     await page.screenshot({ path: join(evidence, `${name}-home-top.png`) });
 
-    // Drafted insights carry removable IDs; personal ones stay hidden until approved.
-    assert.deepEqual(await page.locator('[data-draft]').evaluateAll(els => els.map(el => el.dataset.draft)), drafts);
-    for (const id of drafts) {
-      const item = page.locator(`[data-draft="${id}"]`);
-      if (heldBack.includes(id)) assert.equal(await item.isVisible(), false, `${id} is held back`);
-      else {
-        assert.ok(await item.isVisible(), `${id} is shown for review`);
-        assert.match(await item.evaluate(el => getComputedStyle(el, '::before').content), new RegExp(`Draft ${id}`));
-      }
-    }
+    // Held-back personal entries stay hidden; nothing on the page carries a draft tag.
+    assert.deepEqual(await page.locator('[data-draft]').evaluateAll(els => els.map(el => el.dataset.draft)), heldBack);
+    for (const id of heldBack) assert.equal(await page.locator(`[data-draft="${id}"]`).isVisible(), false, `${id} is held back`);
+    assert.equal(await page.locator('main *').evaluateAll(els => els.filter(el => /Draft|for approval/i.test(getComputedStyle(el, '::before').content)).length), 0, 'No draft tags shown');
 
     // Scroll reveal: below-the-fold content waits for the viewport only when motion is welcome.
     const late = page.locator('main > section').last().locator('.item').last();
@@ -121,10 +139,10 @@ try {
     }
     await page.waitForTimeout(900);
     assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0, 'Everything is visible after scrolling');
-    assert.ok(await page.locator('.mark').evaluate(img => img.complete && img.currentSrc.endsWith(devicePixelRatio >= 2 ? '/avatar-88.webp' : '/avatar-44.webp') && img.alt === 'Janus Tsen'), 'Avatar mark loads as WebP, sharp at the screen density');
+    assert.ok(await page.locator('.mark').evaluate(img => img.complete && img.currentSrc.endsWith(devicePixelRatio >= 2 ? '/avatar-152.webp' : '/avatar-76.webp') && img.alt === 'Janus Tsen'), 'Avatar mark loads as WebP, sharp at the screen density');
     // Every span's drawing is on the page: inline SVG strokes with JavaScript, the image file without it.
     await page.waitForFunction(js => [...document.querySelectorAll('.art')].every(fig => js ? fig.querySelectorAll('svg path').length > 0 : fig.querySelector('img').complete && fig.querySelector('img').naturalWidth > 0), name !== 'no-js');
-    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [1, 1, 1, 1, 1, 1, 1], 'Exactly one drawing per section');
+    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [1, 1, 1, 1, 1, 1, 1, 1], 'Exactly one drawing per section');
     await page.waitForFunction(() => { const path = [...document.querySelectorAll('.art')].pop().querySelector('svg path:last-of-type');
       return !path || parseFloat(getComputedStyle(path).strokeDashoffset) === 0; }, null, { timeout: 6000 });
     assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Links carry no arrow glyphs');
@@ -196,7 +214,7 @@ try {
     await page.waitForURL(base);
 
     assert.deepEqual(errors, []);
-    results.push({ scenario: name, status: 'passed', reveal: animated ? 'on scroll' : 'static', drafts: `${drafts.length - heldBack.length} shown, ${heldBack.length} held back`, bookshelf: name === 'no-js' ? 'native details' : 'tiers, keyboard moves, filter, reset', overflow: false, errors });
+    results.push({ scenario: name, status: 'passed', reveal: animated ? 'on scroll' : 'static', heldBack: heldBack.length, bookshelf: name === 'no-js' ? 'native details' : 'tiers, keyboard moves, filter, reset', overflow: false, errors });
     await context.close();
   }
   for (const [label, options, pinned, animated] of [

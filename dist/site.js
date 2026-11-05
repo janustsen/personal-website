@@ -28,7 +28,14 @@ function scrub(fig) {
   let t;
   if (wide.matches) {
     const span = fig.parentElement.getBoundingClientRect();
-    t = (0.85 * h - span.top) / ((2 / 3) * (span.height + 0.7 * h));
+    // Complete two-thirds of the way through, and always before the drawing releases
+    // (when the span's bottom reaches the drawing's bottom), whichever comes first.
+    const pin = parseFloat(getComputedStyle(fig).top) || 0;
+    const release = 0.85 * h - (pin + fig.offsetHeight - span.height) - 0.08 * h;
+    // ...and never later than the page end, so the last section's drawing also completes.
+    const toEnd = 0.85 * h - span.top + (document.documentElement.scrollHeight - h - scrollY);
+    const travel = Math.max(1, Math.min(Math.max(0.3 * h, Math.min((2 / 3) * (span.height + 0.7 * h), release)), toEnd));
+    t = (0.85 * h - span.top) / travel;
   } else {
     t = (0.85 * h - fig.getBoundingClientRect().top) / (0.65 * h);
   }
