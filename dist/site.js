@@ -103,3 +103,108 @@ function request() { if (!queued) { queued = true; requestAnimationFrame(frame);
 addEventListener('scroll', request, { passive: true });
 addEventListener('resize', request);
 request();
+
+// First-visit intro. The head script in index.html adds .intro-on once per tab session, only with JavaScript,
+// working sessionStorage and no deep link. The picture pops in and "Hey, I'm Janus!" rises in, alone on the screen.
+// The first scroll, swipe, key or tap (or 3 seconds without one) whips them into the header while the blocks on
+// the first screen sweep in from the bottom corners as tilted cards, pile up, and are dealt into place in reading order.
+// Reduced motion keeps both still and swaps to the page with a short fade.
+const root = document.documentElement;
+if (root.classList.contains('intro-on')) {
+  try { intro(); } catch { root.classList.remove('intro-on', 'intro-deal', 'intro-landed'); document.querySelector('.intro-stage')?.remove(); }
+}
+function intro() {
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const curve = f => CSS.supports('animation-timing-function', 'linear(0, 1)')
+    ? `linear(${Array.from({ length: 49 }, (_, i) => +f(i / 48).toFixed(4)).join()})` : 'cubic-bezier(.34,1.56,.64,1)';
+  const back = curve(t => 1 + 2.9 * (t - 1) ** 3 + 1.9 * (t - 1) ** 2);
+  const spring = curve(t => 1 - Math.exp(-6 * t) * Math.cos(t * Math.PI * 2.6));
+  const out = 'cubic-bezier(.33,1,.68,1)', inout = 'cubic-bezier(.65,0,.35,1)';
+
+  const stage = document.createElement('div');
+  stage.className = 'intro-stage';
+  stage.setAttribute('aria-hidden', 'true');
+  stage.innerHTML = `<img class="intro-face" src="/assets/avatar-320.webp" alt=""><p class="intro-hello"><span class="intro-hi">${'Hey, I’m Janus!'.replace(/\S/g, '<span>$&</span>')}</span><span class="intro-name">Janus Tsen</span></p><p class="intro-cue">Scroll<b>↓</b></p>`;
+  document.body.append(stage);
+  const [face, hello, cue] = stage.children, [hi, name] = hello.children;
+  if (!still) {
+    face.animate([{ transform: 'rotate(-25deg) scale(0)' }, { transform: 'rotate(0deg) scale(1)' }], { duration: 650, easing: back });
+    [...hi.children].forEach((letter, i) => {
+      const timing = { duration: 450, delay: 350 + i * 40, fill: 'backwards' };
+      letter.animate([{ translate: '0 46px', opacity: 0 }, { opacity: 1, offset: 0.4 }, { translate: '0 0', opacity: 1 }], { ...timing, easing: back });
+      letter.animate([{ rotate: '-14deg' }, { rotate: '0deg' }], { ...timing, easing: out });
+    });
+    cue.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, delay: 1200, fill: 'backwards' });
+  }
+
+  // Hold the page still until the reorder has played; the blocks are measured at the top of the page.
+  const born = performance.now();
+  let triggered = false;
+  const go = () => { if (!triggered) { triggered = true; setTimeout(reorder, Math.max(0, 1300 - (performance.now() - born))); } };
+  const auto = setTimeout(go, 3000);
+  const hold = e => { if (e.cancelable && (e.type !== 'keydown' || [' ', 'ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'End', 'Home'].includes(e.key))) e.preventDefault(); go(); };
+  const holds = ['wheel', 'touchmove', 'keydown', 'pointerdown', 'scroll'];
+  holds.forEach(type => addEventListener(type, hold, { passive: false }));
+  const done = () => {
+    holds.forEach(type => removeEventListener(type, hold, { passive: false }));
+    root.classList.remove('intro-on', 'intro-deal', 'intro-landed');
+    stage.remove();
+    request();
+  };
+
+  function reorder() {
+    clearTimeout(auto);
+    scrollTo({ top: 0, behavior: 'instant' });
+    if (still) {
+      stage.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, fill: 'forwards' }).finished.then(() => {
+        done();
+        document.querySelector('.page').animate([{ opacity: 0 }, { opacity: 1 }], 150);
+      });
+      return;
+    }
+    const W = innerWidth, H = innerHeight;
+    const centre = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, r.width, r.height]; };
+    const blocks = [...document.querySelectorAll('.contact, .jump, main .label, .opening > *, main .item:not(.opening), main .art')]
+      .filter(el => { const r = el.getBoundingClientRect(); return r.height > 0 && r.top < H; });
+    const [nx, ny] = centre(document.querySelector('.identity h1 a'));
+    const mark = document.querySelector('.mark');
+    root.classList.add('intro-deal');
+    cue.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 150, fill: 'forwards' });
+
+    // Picture and greeting: a quick wind-up, then a spring into the header. Phones hide the picture, so it folds into the name.
+    const [fx, fy, fw] = centre(face), [hx, hy] = centre(hello);
+    const [mx, my, mw] = mark.offsetWidth ? centre(mark) : [nx, ny, fw * 0.15];
+    const k = mw / fw, whip = { duration: 600, fill: 'forwards' };
+    face.animate([
+      { transform: 'translate(0px, 0px) rotate(0deg) scale(1)', borderRadius: '50%', opacity: 1, easing: inout },
+      { transform: 'translate(0px, 0px) rotate(-6deg) scale(1.08)', borderRadius: '50%', opacity: 1, offset: 1 / 6, easing: spring },
+      { transform: `translate(${mx - fx}px, ${my - fy}px) rotate(0deg) scale(${k})`, borderRadius: `${13 / k}px`, opacity: mark.offsetWidth ? 1 : 0 },
+    ], whip);
+    const wind = 1 / 12;
+    hi.animate([{ opacity: 1, transform: 'scale(1)', easing: spring }, { opacity: 1, transform: 'scale(1)', offset: wind, easing: spring }, { opacity: 0, transform: 'scale(.36)' }], whip);
+    name.animate([{ opacity: 0, transform: 'scale(2.6)' }, { opacity: 0, transform: 'scale(2.6)', offset: wind, easing: spring }, { opacity: 1, transform: 'scale(1)' }], whip);
+    const whipped = hello.animate([
+      { transform: 'translate(0px, 0px) skewX(0deg) scale(1)', easing: inout },
+      { transform: 'translate(0px, 0px) skewX(-12deg) scale(1.04)', offset: wind, easing: spring },
+      { transform: `translate(${nx - hx}px, ${ny - hy}px) skewX(0deg) scale(1)` },
+    ], whip).finished.then(() => { root.classList.add('intro-landed'); face.remove(); hello.remove(); });
+
+    // Cards sweep in from alternating bottom corners, settle on a pile mid-screen, then deal into their slots.
+    const cardW = Math.min(300, W * 0.6), cardH = cardW * 2 / 3, corner = Math.min(W / 2, 0.6 * cardW);
+    const card = { boxShadow: '0 14px 36px rgba(0,0,0,.16), 0 0 0 1px rgba(0,0,0,.08)', backgroundColor: '#fff' };
+    const landed = blocks.map((el, i) => {
+      const [cx, cy, w, h] = centre(el), left = i % 2 === 0, s = Math.min(1, cardW / w, cardH / h);
+      const start = 80 + i * 45, deal = 720 + i * 55, duration = deal + 450;
+      const off = { ...card, transform: `translate(${(left ? corner : W - corner) - cx}px, ${H + corner + Math.random() * 0.1 * H - cy}px) rotate(${left ? -35 : 35}deg) skewX(${left ? 15 : -15}deg) scale(${s})` };
+      const pile = { ...card, transform: `translate(${W / 2 + (Math.random() - 0.5) * 28 - cx}px, ${H * 0.5875 - i * 4 - cy}px) rotate(${(Math.random() - 0.5) * 16}deg) skewX(0deg) scale(${s})` };
+      return el.animate([
+        off,
+        { ...off, offset: start / duration, easing: out },
+        { ...pile, offset: (start + 300) / duration },
+        { ...pile, offset: deal / duration, easing: spring },
+        { transform: 'translate(0px, 0px) rotate(0deg) skewX(0deg) scale(1)', boxShadow: '0 0 0 0 transparent, 0 0 0 0 transparent', backgroundColor: 'rgba(255,255,255,0)' },
+      ], { duration }).finished;
+    });
+    Promise.allSettled([whipped, ...landed]).then(done);
+  }
+}
