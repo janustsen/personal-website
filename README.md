@@ -12,9 +12,9 @@ Cloudflare Pages uses `dist/404.html` for unknown URLs, with a link home. `dist/
 
 Preview: `python3 -u -m http.server 63027 --bind 127.0.0.1 --directory dist`.
 
-`npm test` runs `node verify.mjs`; `npm run lint` checks JavaScript syntax.
+`npm test` drives both pages in a real browser; `npm run lint` checks JavaScript syntax for both site scripts and the verification script.
 
-Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `npm run lint` checks JavaScript syntax for both site scripts and the verification script; `node verify.mjs` drives both pages in a real browser.
+For verification setup and detailed checks, follow [.agents/skills/verify-janus-site/SKILL.md](.agents/skills/verify-janus-site/SKILL.md).
 
 ## Design and sources
 
