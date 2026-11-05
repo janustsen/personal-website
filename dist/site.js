@@ -18,26 +18,21 @@ else {
 }
 
 // Drawings: swap each <img> for its inline SVG so the strokes can draw in.
-const START = 0.12; // share of the drawing visible when its span begins
+// The draw-in is tied to scroll while the section is on screen: it starts when the section's top
+// reaches 85% of the viewport and finishes about two-thirds of the way through the section, so
+// the text beside it is always on screen while it draws. Phones scrub against the drawing itself.
 const near = new Set();
 function scrub(fig) {
   if (!fig.classList.contains('drawing')) return;
-  if (!wide.matches) {
-    // Narrow screens: no pinning; the drawing draws in once, when most of it is on screen.
-    const r = fig.getBoundingClientRect();
-    if (r.top < innerHeight * 0.8 && r.bottom > innerHeight * 0.2) drawOnce(fig);
-    else if (!fig.dataset.shown) fig.style.setProperty('--p', START);
-    return;
+  const h = innerHeight;
+  let t;
+  if (wide.matches) {
+    const span = fig.parentElement.getBoundingClientRect();
+    t = (0.85 * h - span.top) / ((2 / 3) * (span.height + 0.7 * h));
+  } else {
+    t = (0.85 * h - fig.getBoundingClientRect().top) / (0.65 * h);
   }
-  fig.classList.remove('once');
-  const span = fig.parentElement.getBoundingClientRect();
-  const pin = parseFloat(getComputedStyle(fig).top) || 0;
-  const t = Math.min(1, Math.max(0, (pin - span.top) / Math.max(1, span.height - fig.offsetHeight)));
-  fig.style.setProperty('--p', (START + (1 - START) * t).toFixed(3));
-}
-function drawOnce(fig) {
-  if (wide.matches || fig.dataset.shown || !fig.classList.contains('drawing')) return;
-  fig.dataset.shown = '1'; fig.classList.add('once'); fig.style.setProperty('--p', 1);
+  fig.style.setProperty('--p', Math.min(1, Math.max(0, t)).toFixed(3));
 }
 async function inline(fig) {
   const img = fig.querySelector('img');
@@ -50,8 +45,8 @@ async function inline(fig) {
     if (img.alt) { svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', img.alt); } else svg.setAttribute('aria-hidden', 'true');
     const paths = svg.querySelectorAll('path');
     paths.forEach((path, i) => { path.setAttribute('pathLength', '1'); path.style.setProperty('--d', (i / paths.length * 0.92).toFixed(4)); });
-    fig.style.setProperty('--p', START);
     if (motion) fig.classList.add('drawing');
+    scrub(fig);
     fig.replaceChildren(document.importNode(svg, true));
     near.add(fig); request();
   } catch { /* Keep the static image. */ }
@@ -63,6 +58,7 @@ if (hasIO && arts.length) {
   }, { rootMargin: '150% 0px' });
   const watcher = new IntersectionObserver(entries => {
     for (const entry of entries) if (entry.isIntersecting) near.add(entry.target); else near.delete(entry.target);
+    request(); // a jump (nav link, reload) brings drawings into view without a later scroll event
   });
   arts.forEach(fig => { loader.observe(fig); watcher.observe(fig); });
 }

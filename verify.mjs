@@ -27,7 +27,7 @@ async function railChecks(context, name, pinned, animated) {
     await page.waitForTimeout(250);
     return page.evaluate(() => { const f = document.querySelector('.span[data-art="strategy"] .art'); const l = document.querySelector('#strategy-label');
       return { top: f.getBoundingClientRect().top, label: l.getBoundingClientRect().top, pin: parseFloat(getComputedStyle(f).top), position: getComputedStyle(f).position,
-        p: parseFloat(getComputedStyle(f).getPropertyValue('--p')) || 1, drawing: f.classList.contains('drawing'), bar: document.querySelector('.bar').classList.contains('on'),
+        p: f.classList.contains('drawing') ? parseFloat(getComputedStyle(f).getPropertyValue('--p')) : 1, drawing: f.classList.contains('drawing'), bar: document.querySelector('.bar').classList.contains('on'),
         barBottom: document.querySelector('.bar').getBoundingClientRect().bottom, current: document.querySelector('.bar [aria-current]')?.textContent }; });
   };
   const a = await at(0.1), b = await at(0.6), c = await at(1.4);
@@ -39,8 +39,31 @@ async function railChecks(context, name, pinned, animated) {
     assert.ok(Math.abs(a.label - a.pin) < 2 && Math.abs(b.label - b.pin) < 2, `${name}: section label pinned`);
     assert.ok(a.pin >= a.barBottom, `${name}: rails sit below the bar`);
     assert.ok(c.top < c.pin - 40, `${name}: drawing releases at the end of its span`);
-    if (animated) assert.ok(a.drawing && a.p < b.p && b.p < 1, `${name}: strokes draw in with scroll (${a.p} < ${b.p})`);
-    else assert.ok(!a.drawing, `${name}: reduced motion shows drawings fully drawn`);
+    if (!animated) assert.ok(!a.drawing, `${name}: reduced motion shows drawings fully drawn`);
+  }
+  if (animated) {
+    // Draw-in happens while the section is on screen: it starts as the section (phones: the drawing) enters,
+    // is partly drawn with entries readable beside it, and is complete while the section's text is still visible.
+    const place = frac => page.evaluate(([frac, wide]) => {
+      const s = document.querySelector('.span[data-art="strategy"]'), f = s.querySelector('.art');
+      const el = wide ? s : f; scrollTo(0, scrollY + el.getBoundingClientRect().top - frac * innerHeight);
+    }, [frac, pinned]);
+    const read = () => page.evaluate(() => {
+      const s = document.querySelector('.span[data-art="strategy"]'), f = s.querySelector('.art');
+      const visibleText = [...s.querySelectorAll('.entries p')].filter(el => { const r = el.getBoundingClientRect(); return r.bottom > 60 && r.top < innerHeight; }).length;
+      return { p: parseFloat(getComputedStyle(f).getPropertyValue('--p')), visibleText, artTop: f.getBoundingClientRect().top, artBottom: f.getBoundingClientRect().bottom };
+    });
+    const samples = [];
+    for (const frac of [0.9, 0.75, 0.5, 0.3, 0.1]) { await place(frac); await page.waitForTimeout(200); samples.push(await read()); }
+    if (pinned) for (let k = 1; k <= 12; k++) { await page.evaluate(() => scrollBy(0, innerHeight * 0.15)); await page.waitForTimeout(120); const r = await read(); samples.push(r); if (r.p >= 1) break; }
+    const ps = samples.map(x => x.p);
+    assert.equal(ps[0], 0, `${name}: nothing drawn before the section enters (${ps})`);
+    assert.ok(ps[1] > 0 && ps[1] < 0.5, `${name}: drawing starts as soon as the section enters (${ps})`);
+    assert.ok(ps.every((v, i) => i === 0 || v >= ps[i - 1]), `${name}: drawing progress follows the scroll (${ps})`);
+    const partial = samples.filter(x => x.p > 0.05 && x.p < 0.95);
+    assert.ok(partial.length >= 2 && partial.every(x => x.visibleText > 0 && x.artBottom > 0), `${name}: text is on screen beside a partly drawn image (${JSON.stringify(partial)})`);
+    const done = samples.find(x => x.p >= 1);
+    assert.ok(done && done.visibleText > 0 && done.artBottom > 0, `${name}: drawing completes while the section is still on screen (${JSON.stringify(samples.at(-1))})`);
   }
   await page.evaluate(() => scrollTo(0, 0));
   await page.waitForTimeout(500);
@@ -86,10 +109,12 @@ try {
     }
 
     // Scroll reveal: below-the-fold content waits for the viewport only when motion is welcome.
-    const late = page.locator('#about .item').last();
+    const late = page.locator('main > section').last().locator('.item').last();
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains('js')), animated);
     assert.equal(await late.evaluate(el => getComputedStyle(el).opacity), animated ? '0' : '1');
-    assert.equal(await page.locator('.reveal').first().evaluate(el => getComputedStyle(el).opacity), '1', 'Opening content is visible at once');
+    assert.equal(await page.locator('.opening').evaluate(el => getComputedStyle(el).opacity), '1', 'Opening About text is visible at once');
+    assert.equal(await page.locator('#about').evaluate(el => el === document.querySelector('main > section')), true, 'About opens the page');
+    assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => el.getBoundingClientRect().top < innerHeight && getComputedStyle(el).opacity !== '1').length), 0, 'Content on screen at load shows at once');
     for (let y = 0; y < await page.evaluate(() => document.documentElement.scrollHeight); y += 500) {
       await page.evaluate(top => scrollTo(0, top), y);
       await page.waitForTimeout(40);
@@ -99,7 +124,7 @@ try {
     assert.ok(await page.locator('.mark').evaluate(img => img.complete && img.currentSrc.endsWith(devicePixelRatio >= 2 ? '/avatar-88.webp' : '/avatar-44.webp') && img.alt === 'Janus Tsen'), 'Avatar mark loads as WebP, sharp at the screen density');
     // Every span's drawing is on the page: inline SVG strokes with JavaScript, the image file without it.
     await page.waitForFunction(js => [...document.querySelectorAll('.art')].every(fig => js ? fig.querySelectorAll('svg path').length > 0 : fig.querySelector('img').complete && fig.querySelector('img').naturalWidth > 0), name !== 'no-js');
-    assert.equal(await page.locator('.art').count(), 16, 'Every span has a drawing');
+    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [1, 1, 1, 1, 1, 1, 1], 'Exactly one drawing per section');
     await page.waitForFunction(() => { const path = [...document.querySelectorAll('.art')].pop().querySelector('svg path:last-of-type');
       return !path || parseFloat(getComputedStyle(path).strokeDashoffset) === 0; }, null, { timeout: 6000 });
     assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Links carry no arrow glyphs');

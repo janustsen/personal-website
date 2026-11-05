@@ -18,7 +18,7 @@ cite{font-style:inherit}
 .page{width:min(100% - 32px,72rem);margin:0 auto;padding:4.5rem 0 3rem}
 
 /* Masthead: mark and intro on the left, name and links on the right. */
-.masthead{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"intro identity";gap:2rem;align-items:start;margin-bottom:5.5rem}
+.masthead{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"intro identity";gap:2rem;align-items:start;margin-bottom:3.5rem}
 .identity{grid-area:identity;text-align:right;padding-top:2.6rem}
 .identity h1{font:400 28px/1 var(--caps);text-transform:uppercase;letter-spacing:.02em}
 .identity h1 a{text-decoration:none}
@@ -27,9 +27,10 @@ cite{font-style:inherit}
 .jump a{text-decoration-color:var(--rule)}
 .contact a,.jump a{padding:4px 0}
 .intro{grid-area:intro;max-width:31rem}
-.mark{display:block;width:44px;height:44px;border-radius:8px;object-fit:cover;margin-bottom:2rem}
-.intro p{font:300 23px/1.2 var(--serif)}
-.intro p+p{margin-top:.8rem}
+.mark{display:block;width:44px;height:44px;border-radius:8px;object-fit:cover}
+.hero{font:300 23px/1.2 var(--serif);max-width:31rem}
+.hero+.hero{margin-top:.8rem}
+.opening .lede{margin-top:1.5rem}
 
 /* Sections: a vertical label column that stays pinned below the bar, then the list. */
 .group{display:grid;grid-template-columns:var(--label) minmax(0,1fr);align-items:start}
@@ -86,9 +87,8 @@ details[open]>summary::after{content:" −"}
   details[open]>.detail-body{animation:note-open .3s cubic-bezier(.2,.7,.25,1)}
   /* Scroll-scrubbed draw-in: each stroke has pathLength 1 and a start point --d; --p is the span's progress. */
   .art.drawing path{stroke-dasharray:1 2;stroke-dashoffset:clamp(0,calc((var(--d) + .08 - var(--p)) / .08),1)}
-  .art.drawing.once{transition:--p 2.4s cubic-bezier(.3,.6,.3,1)}
 }
-@property --p{syntax:'<number>';inherits:true;initial-value:1}
+@property --p{syntax:'<number>';inherits:true;initial-value:0}
 @keyframes note-open{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}a{transition:none}.bar{transition:none}}
 
@@ -101,11 +101,15 @@ details[open]>summary::after{content:" −"}
   .identity{text-align:center;padding:0 0 2rem;border-bottom:1px solid var(--rule);margin-bottom:2.5rem}
   .contact,.jump{justify-content:center}
   .mark{display:none}
-  .intro p{font-size:22px}
+  .hero{font-size:22px}
   .label{font-size:24px;position:static}
-  .span{display:block;min-height:0}
+  /* Phones: the drawing sits after the section's first entry, so its own text is on screen while it draws. */
+  .span{display:flex;flex-direction:column;gap:2.25rem;min-height:0}
+  .entries{display:contents}
+  .entries>*{order:2}
+  .entries>:first-child{order:0}
   .entries>.item:first-child h3::after{display:none}
-  .art{position:static;max-height:none;margin-top:1.5rem;max-width:30rem}
+  .art{position:static;max-height:none;order:1;max-width:30rem}
   .bar{gap:12px}
   .bar-social{display:none}
   .bar-nav{margin-left:0;overflow-x:auto;scrollbar-width:none;flex:1;padding-right:8px}
