@@ -65,5 +65,4 @@ document.querySelector('#reset-shelf').addEventListener('click', () => {
   try { localStorage.removeItem(storageKey); } catch {}
   status.textContent = 'Suggested tiers restored.';
 });
-document.querySelector('.shelf-tools').hidden = false;
 document.querySelector('.shelf-help').textContent = 'I haven’t necessarily read these, and the tiers aren’t my ratings. Open a book to see a note on it. To move it, drag it to another tier, or select it and press S, A, B or C. Your changes stay in this browser.';
