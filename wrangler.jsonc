@@ -3,5 +3,7 @@
   // The site itself publishes through Cloudflare Pages, which ignores this file (no pages_build_output_dir).
   "name": "personal-website",
   "compatibility_date": "2026-11-01",
-  "assets": { "directory": "./dist" }
+  "assets": { "directory": "./dist" },
+  // The Workers project runs `npx wrangler preview` on PR branches, which needs this block.
+  "previews": {}
 }
