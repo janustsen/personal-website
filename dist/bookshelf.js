@@ -59,6 +59,7 @@ for (const tier of document.querySelectorAll('.tier')) {
 }
 search.addEventListener('input', filter);
 topic.addEventListener('change', filter);
+filter();
 document.querySelector('#reset-shelf').addEventListener('click', () => {
   for (const book of books) { move(book, book.dataset.defaultTier); book.open = false; }
   search.value = ''; topic.value = 'all'; filter();
