@@ -26,18 +26,22 @@ function scrub(fig) {
   if (!fig.classList.contains('drawing')) return;
   const h = innerHeight;
   let t;
+  // Drawing starts when the section reaches 85% of the viewport. A section already above that
+  // at the top of the page (About) starts from nothing at load and draws in as you scroll.
   if (wide.matches) {
     const span = fig.parentElement.getBoundingClientRect();
+    const start = Math.min(0.85 * h, span.top + scrollY);
     // Complete two-thirds of the way through, and always before the drawing releases
     // (when the span's bottom reaches the drawing's bottom), whichever comes first.
     const pin = parseFloat(getComputedStyle(fig).top) || 0;
-    const release = 0.85 * h - (pin + fig.offsetHeight - span.height) - 0.08 * h;
+    const release = start - (pin + fig.offsetHeight - span.height) - 0.08 * h;
     // ...and never later than the page end, so the last section's drawing also completes.
-    const toEnd = 0.85 * h - span.top + (document.documentElement.scrollHeight - h - scrollY);
-    const travel = Math.max(1, Math.min(Math.max(0.3 * h, Math.min((2 / 3) * (span.height + 0.7 * h), release)), toEnd));
-    t = (0.85 * h - span.top) / travel;
+    const toEnd = start - span.top + (document.documentElement.scrollHeight - h - scrollY);
+    const travel = Math.max(1, Math.min(Math.max(0.3 * h, Math.min((2 / 3) * (span.height + 0.7 * h), release)), release > 0 ? release : Infinity, toEnd));
+    t = (start - span.top) / travel;
   } else {
-    t = (0.85 * h - fig.getBoundingClientRect().top) / (0.65 * h);
+    const top = fig.getBoundingClientRect().top;
+    t = (Math.min(0.85 * h, top + scrollY) - top) / (0.65 * h);
   }
   fig.style.setProperty('--p', Math.min(1, Math.max(0, t)).toFixed(3));
 }

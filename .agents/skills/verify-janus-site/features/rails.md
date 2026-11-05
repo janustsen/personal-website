@@ -6,7 +6,7 @@
   - Each span is as tall as its text (or its drawing, if that is taller). A drawing stays pinned only while its section's text is beside it, then hands off to the next one. It never sits beside an empty column.
 - Rails (wider than 760px): the section label and the drawing are `position: sticky` just below the bar. They stay pinned while the entries scroll and release when the span ends.
 - Draw-in: `site.js` swaps each image for its inline SVG and gives every stroke `pathLength=1` and a start point `--d`, in file order.
-  - Scroll sets `--p` from 0 to 1 while the section is on screen. Drawing starts when the section's top reaches 85% of the viewport and finishes about two-thirds of the way through the section, so text is always beside a partly drawn image. It always completes before the drawing releases, or by the page end for the last section.
+  - Scroll sets `--p` from 0 to 1 while the section is on screen. Drawing starts when the section's top reaches 85% of the viewport and finishes about two-thirds of the way through the section, so text is always beside a partly drawn image. It always completes before the drawing releases, or by the page end for the last section. About is already on screen at load, so it counts from the top of the page: it opens with only the face and draws in the hair, collar, tie and suit over the first scroll.
   - Strokes draw in through `stroke-dashoffset`.
   - Phones have no rails. Each drawing sits after its section's first entry and scrubs against its own position: it starts as it enters at 85% and completes by the time its top reaches 20%.
   - With reduced motion or no JavaScript, drawings show fully drawn.
