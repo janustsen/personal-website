@@ -4,9 +4,17 @@ A static personal website: one long homepage plus a Bookshelf page. Deploy `dist
 
 Cloudflare Pages uses `dist/404.html` for unknown URLs, with a link home. `dist/robots.txt` allows all crawlers. The homepage and Bookshelf declare their canonical URLs and Open Graph/Twitter card metadata.
 
+## Installation
+
+`npm ci` installs the one dev dependency (`playwright-core`, used only by the verification script). The site itself needs no install.
+
+## Usage
+
 Preview: `python3 -u -m http.server 63027 --bind 127.0.0.1 --directory dist`.
 
-Verification: follow `.agents/skills/verify-janus-site/SKILL.md`. `npm run lint` checks JavaScript syntax for both site scripts and the verification script; `node verify.mjs` drives both pages in a real browser.
+`npm test` drives both pages in a real browser; `npm run lint` checks JavaScript syntax for both site scripts and the verification script.
+
+For verification setup and detailed checks, follow [.agents/skills/verify-janus-site/SKILL.md](.agents/skills/verify-janus-site/SKILL.md).
 
 ## Design and sources
 
