@@ -11,7 +11,7 @@ const results = [];
 // The first-visit intro plays once per tab session; the page checks below start from the settled page.
 const skipIntro = () => { try { sessionStorage.setItem('intro', '1'); } catch {} };
 // First-visit intro: the picture and greeting alone, then on a scroll, key or swipe (or after about 3 seconds)
-// the page reorders into place. A reload or a deep link lands straight on the page.
+// they spring into the header picture and name while the page fades in. A reload or a deep link lands straight on the page.
 async function introChecks(name, options, trigger) {
   const context = await browser.newContext(options);
   const page = await context.newPage();
@@ -35,6 +35,7 @@ async function introChecks(name, options, trigger) {
   const hold = await page.evaluate(() => ({ hi: document.querySelector('.intro-hi').textContent, face: document.querySelector('.intro-face').naturalWidth > 0,
     moving: document.querySelector('.intro-stage').getAnimations({ subtree: true }).filter(a => a.playState === 'running').length }));
   assert.ok(hold.hi === 'Hey, I’m Janus!' && hold.face, `${name}: picture and greeting (${JSON.stringify(hold)})`);
+  assert.equal(await page.evaluate(() => document.querySelector('.intro-stage').children.length), 2, `${name}: the intro is only the picture and greeting, no scroll cue`);
   if (still) assert.equal(hold.moving, 0, `${name}: reduced motion keeps the intro still`);
   await page.screenshot({ path: join(evidence, `intro-${name}-1-start.png`) });
   // While the intro runs the page must not scroll or overflow sideways (a phone would zoom out).
@@ -47,14 +48,15 @@ async function introChecks(name, options, trigger) {
   if (trigger === 'touch') await (await context.newCDPSession(page)).send('Input.synthesizeScrollGesture', { x: width / 2, y: height * 0.7, yDistance: -300, gestureSourceType: 'touch' });
   const fired = await page.evaluate(() => performance.now());
   if (!still) {
-    await page.waitForFunction(() => document.documentElement.classList.contains('intro-deal'), null, { timeout: 4000 });
-    await page.waitForTimeout(500);
-    assert.ok(await page.locator('.contact').evaluate(el => el.getAnimations().length === 1), `${name}: header links are dealt into place`);
+    await page.waitForFunction(() => document.documentElement.classList.contains('intro-out'), null, { timeout: 4000 });
+    await page.waitForTimeout(250);
+    const moving = await page.evaluate(() => [...document.querySelectorAll('.page *')].filter(el => el.getAnimations().length).length);
+    assert.equal(moving, 0, `${name}: the page fades in as a whole; no blocks are dealt into place`);
     await page.screenshot({ path: join(evidence, `intro-${name}-2-mid.png`) });
   }
   const ended = await (await page.waitForFunction(() => !document.documentElement.classList.contains('intro-on') && performance.now(), null, { timeout: 6000, polling: 'raf' })).jsonValue();
-  if (trigger === 'auto') assert.ok(ended > 4000 && ended < 6500, `${name}: auto-advances after about 3 seconds (settled at ${Math.round(ended)} ms)`);
-  else assert.ok(ended - fired < (still ? 600 : 2300), `${name}: reorder plays as one short burst (${Math.round(ended - fired)} ms)`);
+  if (trigger === 'auto') assert.ok(ended > 3000 && ended < 5000, `${name}: auto-advances after about 3 seconds (settled at ${Math.round(ended)} ms)`);
+  else assert.ok(ended - fired < (still ? 600 : 2300), `${name}: the intro hands over in one short burst (${Math.round(ended - fired)} ms)`);
   await page.waitForTimeout(300);
   await page.screenshot({ path: join(evidence, `intro-${name}-3-settled.png`) });
   assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible' }, `${name}: the page is fully back`);
@@ -63,16 +65,14 @@ async function introChecks(name, options, trigger) {
     hidden: [...document.querySelectorAll('.reveal')].filter(el => el.getBoundingClientRect().top < innerHeight && getComputedStyle(el).opacity !== '1').length,
     mark: getComputedStyle(document.querySelector('.mark')).visibility }));
   assert.deepEqual(settled, { watch: { wide: 0, scrolled: 0 }, scrollY: 0, moved: 0, hidden: 0, mark: 'visible' }, `${name}: settled into the normal layout`);
-  // The normal page works after the intro: the portrait draws in with scroll and the bar takes over.
+  // The normal page works after the intro: the portrait shows whole, the page scrolls and the bar takes over.
   await page.waitForFunction(() => document.querySelector('#about .art svg'));
   const drawn = () => page.locator('#about .art').evaluate(f => f.classList.contains('drawing') ? parseFloat(getComputedStyle(f).getPropertyValue('--p')) : 1);
-  const before = await drawn();
+  assert.equal(await drawn(), 1, `${name}: the portrait shows whole, not partly drawn`);
   await page.mouse.move(width / 2, height / 2);
   await page.mouse.wheel(0, height * 0.6);
   await page.waitForTimeout(700);
-  const after = await drawn();
   assert.ok(await page.evaluate(() => scrollY > 0), `${name}: the page scrolls after the intro`);
-  assert.ok(still ? after === 1 : after > before, `${name}: portrait draws in with scroll after the intro (${before} -> ${after})`);
   await page.evaluate(() => scrollTo(0, 1600));
   await page.waitForTimeout(500);
   assert.ok(await page.locator('.bar').evaluate(el => el.classList.contains('on')), `${name}: header bar takes over after the intro`);
@@ -197,7 +197,7 @@ try {
     assert.ok(await page.evaluate(() => document.fonts.check('300 17px "Crimson Pro"') && document.fonts.check('28px "Unica One"')), 'Site fonts load');
     assert.equal(await page.getByRole('link', { name: 'GitHub', exact: true }).first().getAttribute('href'), 'https://github.com/janustsen');
     assert.equal(await page.getByRole('link', { name: 'Email', exact: true }).first().getAttribute('href'), 'mailto:janustsen@outlook.com');
-    for (const id of ['building', 'experience', 'strategy', 'ai', 'values', 'books', 'about']) assert.equal(await page.locator(`#${id} h2.label`).count(), 1, `${id} has a section label`);
+    for (const id of ['building', 'experience', 'strategy', 'ai', 'values', 'books', 'interests', 'about']) assert.equal(await page.locator(`#${id} h2.label`).count(), 1, `${id} has a section label`);
     assert.ok(await noOverflow(page), `${name}: no horizontal overflow at load`);
     await page.screenshot({ path: join(evidence, `${name}-home-top.png`) });
 
@@ -219,10 +219,10 @@ try {
     }
     await page.waitForTimeout(900);
     assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0, 'Everything is visible after scrolling');
-    assert.ok(await page.locator('.mark').evaluate(img => img.complete && img.currentSrc.endsWith(devicePixelRatio >= 2 ? '/avatar-152.webp' : '/avatar-76.webp') && img.alt === 'Janus Tsen'), 'Avatar mark loads as WebP, sharp at the screen density');
+    assert.ok(await page.locator('.mark').evaluate(img => img.complete && img.currentSrc.endsWith(devicePixelRatio >= 2 ? '/avatar-320.webp' : '/avatar-152.webp') && img.alt === 'Janus Tsen'), 'Avatar mark loads as WebP, sharp at the screen density');
     // Every span's drawing is on the page: inline SVG strokes with JavaScript, the image file without it.
     await page.waitForFunction(js => [...document.querySelectorAll('.art')].every(fig => js ? fig.querySelectorAll('svg path').length > 0 : fig.querySelector('img').complete && fig.querySelector('img').naturalWidth > 0), name !== 'no-js');
-    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [1, 1, 1, 1, 1, 1, 1, 1], 'Exactly one drawing per section');
+    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [1, 1, 1, 1, 1, 1, 1, 1, 0], 'Exactly one drawing per section, none beside Other interests');
     await page.waitForFunction(() => { const path = [...document.querySelectorAll('.art')].pop().querySelector('svg path:last-of-type');
       return !path || parseFloat(getComputedStyle(path).strokeDashoffset) === 0; }, null, { timeout: 6000 });
     assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Links carry no arrow glyphs');
@@ -325,6 +325,37 @@ try {
   assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0);
   await context.close();
   results.push({ preferenceChange: 'reduced motion reveals everything', status: 'passed' });
+  // Every width: no sideways overflow or clipped header links, a large centred photo, the bar fits, and Other interests holds its three entries.
+  for (const width of [360, 390, 620, 768, 820, 1024, 1180, 1240, 1440, 1920]) {
+    const mobile = width < 700;
+    const sized = await browser.newContext({ viewport: { width, height: 900 }, isMobile: mobile, hasTouch: mobile });
+    await sized.addInitScript(skipIntro);
+    const page = await sized.newPage();
+    await page.goto(base, { waitUntil: 'networkidle' });
+    const r = await page.evaluate(() => {
+      const mark = document.querySelector('.mark').getBoundingClientRect(), W = innerWidth;
+      const outside = [...document.querySelectorAll('.masthead a, main h2, main h3, main p')].filter(el => { const b = el.getBoundingClientRect(); return b.width && (b.left < -1 || b.right > W + 1) && !el.closest('.jump'); }).length;
+      const jump = document.querySelector('.jump');
+      return { wide: document.documentElement.scrollWidth - W, outside, jumpScrolls: jump.scrollWidth > jump.clientWidth && getComputedStyle(jump).overflowX === 'auto' || jump.scrollWidth <= jump.clientWidth,
+        mark: Math.round(mark.width), offCentre: Math.abs(mark.left + mark.width / 2 - W / 2), interests: [...document.querySelectorAll('#interests h3')].map(h => h.textContent),
+        aboutEntries: document.querySelectorAll('#about article').length };
+    });
+    await page.evaluate(() => scrollTo(0, 2000));
+    await page.waitForTimeout(450);
+    const barFits = await page.evaluate(() => { const bar = document.querySelector('.bar'); return [...bar.children].every(el => getComputedStyle(el).display === 'none' || el.getBoundingClientRect().right <= innerWidth + 1); });
+    assert.ok(r.wide <= 0 && r.outside === 0 && r.jumpScrolls, `${width}px: no sideways overflow or clipped text (${JSON.stringify(r)})`);
+    assert.ok(r.mark >= 96 && r.offCentre < 2, `${width}px: header photo is large and centred (${JSON.stringify(r)})`);
+    assert.ok(barFits, `${width}px: header bar fits the screen`);
+    assert.deepEqual(r.interests, ['Writing & ideas', 'Homer Humanities', 'Karate'], `${width}px: Other interests holds its three entries`);
+    assert.equal(r.aboutEntries, 0, `${width}px: those entries are no longer under About`);
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.screenshot({ path: join(evidence, `width-${width}-top.png`) });
+    await page.locator('#interests').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: join(evidence, `width-${width}-interests.png`) });
+    await sized.close();
+    results.push({ width, status: 'passed', mark: r.mark });
+  }
   await writeFile(join(evidence, 'results.json'), JSON.stringify(results, null, 2));
   console.log(JSON.stringify(results, null, 2));
 } finally { await browser.close(); }

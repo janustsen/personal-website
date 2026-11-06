@@ -2,15 +2,15 @@
 
 ## Sub-features
 - Gate: the inline script in the head of `dist/index.html` adds `intro-on` to `<html>` only with JavaScript, working `sessionStorage` (key `intro`), no URL hash, and no earlier play in this tab. Without it the page loads as normal.
-- Hold: only the picture (pops in with a spin) and "Hey, I'm Janus!" (letters rise in) show, with a bobbing "Scroll" cue. The page underneath is transparent and does not scroll.
-- Trigger: the first wheel, swipe, key or tap, or 3 seconds without one, starts the reorder (never before the 1.3 s opening finishes).
-- Reorder: the picture and greeting spring into the masthead mark and name (phones have no mark, so the picture folds into the name). Every block on the first screen (contact links, section links, labels, About lines, entries, drawings) sweeps in from the bottom corners as a tilted card, piles mid-screen and is dealt into place in DOM order. It takes about 1.7 s on desktop and under 2 s on tall tablets.
-- Settled: the stage is removed and `intro-on`, `intro-deal` and `intro-landed` are cleared. Scroll reveal, drawings and the bar then work as normal.
+- Hold: only the picture (pops in with a spin) and "Hey, I'm Janus!" (letters rise in) show, with no scroll cue. The page underneath is transparent and does not scroll.
+- Trigger: the first wheel, swipe, key or tap, or 3 seconds without one, starts the hand-off (never before the 1.3 s opening finishes).
+- Hand-off: the picture and greeting spring into the masthead photo and name while the page fades in as a whole (about 0.6 s). No blocks are dealt or animated individually.
+- Settled: the stage is removed and `intro-on`, `intro-out` and `intro-landed` are cleared. Scroll reveal, drawings and the bar then work as normal.
 - Reduced motion: the picture and greeting stay still; the trigger fades to the page in about 0.3 s.
-- Safety: fallback behavior is documented in [README.md](../../../../../README.md#design-and-sources). While the intro runs, the body clips sideways overflow so phones never zoom out.
+- Safety: fallback behavior is documented in [README.md](../../../../../README.md#design-and-sources). While the intro runs, the body clips sideways overflow (the name starts scaled up) so phones never zoom out.
 
 ## User path and drive
-Open the homepage in a fresh tab and wait, or scroll once. `node verify.mjs` runs `introChecks` at desktop (wheel), tablet (PageDown), phone (touch swipe through CDP), compact phone (auto-advance, settles at about 4.6 s), and reduced-motion desktop. These cases check the hold state, the mid-reorder state, that the reorder ends within its budget, that nothing scrolled or overflowed sideways during it, that the layout is untouched afterwards, that the portrait draws in with scroll and the bar takes over, and that a reload and a `#building` deep link skip the intro. Read the `intro-*-1-start`, `-2-mid` and `-3-settled` screenshots. Separate no-JavaScript and blocked-`site.js` cases check that the page and heading are visible with no intro stage; the blocked-script case waits for the fallback before asserting.
+Open the homepage in a fresh tab and wait, or scroll once. `node verify.mjs` runs `introChecks` at desktop (wheel), tablet (PageDown), phone (touch swipe through CDP), compact phone (auto-advance, settles at about 3.7 s), and reduced-motion desktop. These cases check the hold state (picture and greeting only, no cue), that mid hand-off only the page fades and no block animates, that the hand-off ends within its budget, that nothing scrolled or overflowed sideways during it, that the layout is untouched afterwards, that the portrait shows whole and the bar takes over, and that a reload and a `#building` deep link skip the intro. Read the `intro-*-1-start`, `-2-mid` and `-3-settled` screenshots. Separate no-JavaScript and blocked-`site.js` cases check that the page and heading are visible with no intro stage; the blocked-script case waits for the fallback before asserting.
 
 ## Limits
-Browser emulation does not prove physical phone behavior. Mid-reorder screenshots are taken in real time, so the exact frame varies slightly between runs.
+Browser emulation does not prove physical phone behavior. Mid hand-off screenshots are taken in real time, so the exact frame varies slightly between runs.

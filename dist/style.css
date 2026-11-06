@@ -17,17 +17,16 @@ cite{font-style:inherit}
 
 .page{width:min(100% - 32px,72rem);margin:0 auto;padding:4.5rem 0 3rem}
 
-/* Masthead: mark and intro on the left, name and links on the right. */
-.masthead{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"intro identity";gap:2rem;align-items:start;margin-bottom:3.5rem}
-.identity{grid-area:identity;text-align:right;padding-top:2.6rem}
-.identity h1{font:400 34px/1 var(--caps);text-transform:uppercase;letter-spacing:.02em}
+/* Masthead: one centred unit, the photo above the name and links. */
+.masthead{margin-bottom:3.5rem}
+.identity{text-align:center}
+.identity h1{margin-top:1.25rem;font:400 34px/1 var(--caps);text-transform:uppercase;letter-spacing:.02em}
 .identity h1 a{text-decoration:none}
-.contact,.jump{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:5px 12px;margin-top:17px;font-size:14.5px}
+.contact,.jump{display:flex;justify-content:center;flex-wrap:wrap;gap:5px 12px;margin-top:17px;font-size:14.5px}
 .jump{margin-top:12px;color:var(--muted)}
 .jump a{text-decoration-color:var(--rule)}
 .contact a,.jump a{padding:4px 0}
-.intro{grid-area:intro;max-width:31rem}
-.mark{display:block;width:76px;height:76px;border-radius:13px;object-fit:cover}
+.mark{display:block;width:120px;height:120px;margin:0 auto;border-radius:20px;object-fit:cover}
 .opening .hero{font:300 23px/1.2 var(--serif);max-width:31rem}
 .opening .hero+.hero{margin-top:.8rem}
 .opening .lede{margin-top:1.5rem}
@@ -44,7 +43,7 @@ cite{font-style:inherit}
 .item{max-width:var(--text);min-width:0}
 .item h3{font:italic 300 24px/1.2 var(--serif)}
 .entries>.item:first-child h3{display:flex;align-items:center;gap:1rem}
-.entries>.item:first-child h3::after{content:"";flex:1 0 2rem;border-top:1px solid var(--line);margin-right:calc(-1 * var(--gap))}
+.span .entries>.item:first-child h3::after{content:"";flex:1 0 2rem;border-top:1px solid var(--line);margin-right:calc(-1 * var(--gap))}
 .art{position:sticky;top:var(--pin);margin:0;width:100%;aspect-ratio:4/5;max-height:calc(100vh - var(--pin) - 24px)}
 .art img,.art svg{display:block;width:100%;height:100%}
 .item p,.lede{font:300 17px/1.38 var(--serif)}
@@ -62,7 +61,7 @@ cite{font-style:inherit}
 .bar a[aria-current]{font-weight:600}
 .bar-name{display:flex;align-items:center;gap:8px;font:400 18px/1 var(--caps);text-transform:uppercase;white-space:nowrap}
 .bar-name img{width:24px;height:24px;border-radius:5px;object-fit:cover}
-.bar-nav{display:flex;gap:14px;margin-left:auto;white-space:nowrap}
+.bar-nav{display:flex;gap:14px;margin-left:auto;white-space:nowrap;min-width:0;overflow-x:auto;scrollbar-width:none}
 .bar-social{display:flex;gap:10px;color:var(--muted)}
 
 /* Native disclosure for deeper project context. */
@@ -93,14 +92,14 @@ details[open]>summary::after{content:" −"}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}a{transition:none}.bar{transition:none}}
 
 /* First-visit intro and fallback behavior: see README.md.
-   Cards fly in from below the screen and spring past their slots; clipping keeps the page
-   from widening, which would make phones zoom out mid-flight. */
+   The name starts scaled up past the screen edge; clipping keeps the page from widening,
+   which would make phones zoom out. */
 :is(.intro-on,.intro-on body){overflow-x:clip}
-.intro-on:not(.intro-deal) .page{opacity:0;animation:intro-safety 1ms 8s forwards}
+.intro-on:not(.intro-out) .page{opacity:0;animation:intro-safety 1ms 8s forwards}
 .intro-on:not(.intro-landed) :is(.identity h1,.mark){visibility:hidden}
 @keyframes intro-safety{to{opacity:1}}
 .intro-stage{position:fixed;inset:0;z-index:20;--face:160px}
-.intro-deal .intro-stage{pointer-events:none}
+.intro-out .intro-stage{pointer-events:none}
 .intro-stage>*{position:absolute;left:50%;margin:0}
 .intro-face{top:31%;width:var(--face);height:var(--face);translate:-50% -50%;border-radius:50%;object-fit:cover}
 .intro-hello{top:51%;translate:-50% -50%;display:grid;place-items:center}
@@ -108,31 +107,27 @@ details[open]>summary::after{content:" −"}
 .intro-hi{font:400 56px/1.15 var(--serif)}
 .intro-hi span{display:inline-block}
 .intro-name{font:400 34px/1 var(--caps);text-transform:uppercase;letter-spacing:.02em;opacity:0}
-.intro-cue{bottom:6%;translate:-50% 0;font:400 14px/1 var(--caps);text-transform:uppercase;letter-spacing:.12em;color:var(--muted);text-align:center}
-.intro-cue b{display:block;font-weight:400;font-size:22px;margin-top:6px}
-@media(prefers-reduced-motion:no-preference){.intro-cue{animation:intro-bob .52s ease-in-out infinite alternate}}
-@keyframes intro-bob{from{transform:translateY(-5px)}to{transform:translateY(5px)}}
 @media(max-width:760px){.intro-stage{--face:120px}.intro-hi{font-size:42px}}
 
 /* Tablet: share the row more evenly so the drawing still fills a real column. */
-@media(min-width:761px) and (max-width:1100px){.span{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);column-gap:2rem}.entries>.item:first-child h3::after{margin-right:-2rem}}
+@media(max-width:1100px){.bar-social{display:none}}
+@media(min-width:761px) and (max-width:1100px){.span{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);column-gap:2rem}.span .entries>.item:first-child h3::after{margin-right:-2rem}}
 @media(max-width:760px){
   :root{--label:3.6rem}
   .page{padding-top:3rem}
-  .masthead{grid-template-columns:minmax(0,1fr);grid-template-areas:"identity" "intro";gap:0;margin-bottom:3.5rem}
-  .identity{min-width:0;text-align:center;padding:0 0 2rem;border-bottom:1px solid var(--rule);margin-bottom:2.5rem}
+  .identity{padding-bottom:2rem;border-bottom:1px solid var(--rule)}
   .contact{justify-content:center;font-size:13.5px;gap:4px 10px}
   /* Phones: the section links stay on one row and scroll sideways, like the condensed bar. */
   .jump{justify-content:safe center;font-size:13.5px;gap:4px 12px;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
-  .mark{display:none}
+  .mark{width:96px;height:96px;border-radius:16px}
   .opening .hero{font-size:22px}
   .label{font-size:36px;position:static}
   /* Phones: the drawing sits after the section's first entry, so its own text is on screen while it draws. */
   .span{display:flex;flex-direction:column;gap:2.25rem;min-height:0}
-  .entries{display:contents}
-  .entries>*{order:2}
-  .entries>:first-child{order:0}
-  .entries>.item:first-child h3::after{display:none}
+  .span .entries{display:contents}
+  .span .entries>*{order:2}
+  .span .entries>:first-child{order:0}
+  .span .entries>.item:first-child h3::after{display:none}
   .art{position:static;max-height:none;order:1;max-width:30rem}
   .bar{gap:12px}
   .bar-social{display:none}
