@@ -21,17 +21,18 @@ async function introChecks(name, options, trigger) {
   if (trigger === 'blocked') await page.route('**/site.js*', route => route.abort());
   await page.goto(base);
   const state = () => page.evaluate(() => ({ on: document.documentElement.classList.contains('intro-on'), stage: !!document.querySelector('.intro-stage'),
-    page: getComputedStyle(document.querySelector('.page')).opacity, h1: getComputedStyle(document.querySelector('.identity h1')).visibility }));
+    page: getComputedStyle(document.querySelector('.page')).opacity, h1: getComputedStyle(document.querySelector('.identity h1')).visibility,
+    mark: getComputedStyle(document.querySelector('.mark img, .mark svg')).opacity }));
   if (trigger === 'blocked') await page.waitForTimeout(4500);
   if (trigger === 'none' || trigger === 'blocked') {
-    assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible' }, `${name}: ${trigger === 'blocked' ? 'page shows once a blocked site.js cancels the intro' : 'no intro without JavaScript'}`);
+    assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible', mark: '1' }, `${name}: ${trigger === 'blocked' ? 'page and portrait show once a blocked site.js cancels the intro' : 'no intro without JavaScript'}`);
     await context.close();
     results.push({ intro: name, status: 'passed', shown: false });
     return;
   }
   const still = options.reducedMotion === 'reduce';
   await page.waitForTimeout(1600);
-  assert.deepEqual(await state(), { on: true, stage: true, page: '0', h1: 'hidden' }, `${name}: only the intro shows on a first visit`);
+  assert.deepEqual({ ...await state(), mark: undefined }, { on: true, stage: true, page: '0', h1: 'hidden', mark: undefined }, `${name}: only the intro shows on a first visit`);
   const hold = await page.evaluate(() => ({ hi: document.querySelector('.intro-hi').textContent, face: document.querySelectorAll('.intro-face svg path').length > 0,
     photo: document.querySelectorAll('img[src*="avatar"]').length,
     moving: document.querySelector('.intro-stage').getAnimations({ subtree: true }).filter(a => a.playState === 'running').length }));
@@ -61,7 +62,7 @@ async function introChecks(name, options, trigger) {
   else assert.ok(ended - fired < (still ? 600 : 2300), `${name}: the intro hands over in one short burst (${Math.round(ended - fired)} ms)`);
   await page.waitForTimeout(300);
   await page.screenshot({ path: join(evidence, `intro-${name}-3-settled.png`) });
-  assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible' }, `${name}: the page is fully back`);
+  assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible', mark: '1' }, `${name}: the page is fully back`);
   const settled = await page.evaluate(() => ({ watch: window.introWatch, scrollY,
     moved: [...document.querySelectorAll('.contact, .jump, .label, .opening > *, .item, .art')].filter(el => getComputedStyle(el).transform !== 'none' && !el.matches('.reveal:not(.in)')).length,
     hidden: [...document.querySelectorAll('.reveal')].filter(el => el.getBoundingClientRect().top < innerHeight && getComputedStyle(el).opacity !== '1').length,
@@ -221,10 +222,14 @@ try {
     assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0, 'Everything is visible after scrolling');
     // Masthead mark: the line portrait (no photo anywhere), drawn in once on load with motion, whole without it.
     assert.equal(await page.locator('img[src*="avatar"]').count(), 0, 'No profile photo on the page');
-    const mark = await page.locator('.mark').evaluate(async (m, js) => {
+    if (name !== 'no-js') {
+      await page.waitForFunction(() => document.querySelector('.mark svg'), null, { timeout: 6000 })
+        .catch(() => { throw new Error(`${name}: masthead portrait was never inlined (portrait.svg fetch or site.js failed)`); });
+      await page.waitForFunction(() => !document.querySelector('.mark').getAnimations().some(a => a.playState === 'running'), null, { timeout: 6000 })
+        .catch(() => { throw new Error(`${name}: masthead portrait draw-in never finished`); });
+    }
+    const mark = await page.locator('.mark').evaluate((m, js) => {
       if (!js) { const img = m.querySelector('img'); return { svg: false, src: /\/assets\/drawings\/portrait\.svg\?v=\w+$/.test(img.src) && img.complete && img.naturalWidth > 0, alt: img.alt }; }
-      while (!m.querySelector('svg')) await new Promise(r => setTimeout(r, 50));
-      while (m.getAnimations().some(a => a.playState === 'running')) await new Promise(r => setTimeout(r, 100));
       return { svg: m.querySelectorAll('svg path').length > 0, src: true, alt: m.querySelector('svg').getAttribute('aria-label'), drawing: m.classList.contains('drawing'),
         p: m.classList.contains('drawing') ? parseFloat(getComputedStyle(m).getPropertyValue('--p')) : 1 };
     }, name !== 'no-js');
@@ -315,6 +320,24 @@ try {
     ['no-js', { viewport: { width: 390, height: 844 }, javaScriptEnabled: false }, 'none'],
     ['site-js-blocked', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, 'blocked'],
   ]) await introChecks(name, options, trigger);
+  // Masthead portrait with a slow site.js: the static image (already loaded) stays hidden until the swap, so it never
+  // shows whole and then restarts its draw-in; the draw-in then runs from the start.
+  {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+    await context.addInitScript(skipIntro);
+    const page = await context.newPage();
+    await page.route('**/site.js*', async route => { await new Promise(r => setTimeout(r, 1500)); await route.continue(); });
+    await page.goto(base, { waitUntil: 'commit' });
+    await page.waitForFunction(() => { const img = document.querySelector('.mark img'); return img && img.complete && img.naturalWidth > 0; }, null, { timeout: 4000 });
+    const waiting = await page.evaluate(() => ({ swapped: !!document.querySelector('.mark svg'), opacity: getComputedStyle(document.querySelector('.mark img')).opacity }));
+    assert.deepEqual(waiting, { swapped: false, opacity: '0' }, 'Static portrait stays hidden while site.js loads');
+    await page.waitForFunction(() => document.querySelector('.mark svg'), null, { timeout: 6000 })
+      .catch(() => { throw new Error('slow site.js: masthead portrait was never inlined'); });
+    const p = await page.locator('.mark').evaluate(m => m.classList.contains('drawing') ? parseFloat(getComputedStyle(m).getPropertyValue('--p')) : null);
+    assert.ok(p !== null && p < 0.5, `Portrait draws in from the start after a slow site.js (--p ${p})`);
+    await context.close();
+    results.push({ portrait: 'slow site.js', status: 'passed', hiddenUntilSwap: true });
+  }
   for (const [label, options, pinned, animated] of [
     ['desktop', { viewport: { width: 1440, height: 1000 } }, true, true],
     ['tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true }, true, true],

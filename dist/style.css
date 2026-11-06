@@ -22,6 +22,9 @@ cite{font-style:inherit}
 .identity{display:flex;align-items:stretch;gap:var(--mast-gap);--mast-gap:40px;--face:200px}
 .mark{flex:none;align-self:center;width:var(--face);aspect-ratio:1106/1194}
 .mark>*,.intro-face>*{display:block;width:100%;height:100%}
+/* The static portrait waits hidden for site.js to swap in the drawing-in copy, so it never shows whole and then restarts.
+   The head script sets .mark-wait only when motion is welcome; it shows anyway after 4 s if site.js never runs. */
+.mark-wait .mark img{opacity:0;animation:intro-safety 1ms 4s forwards}
 .who{display:flex;flex-direction:column;justify-content:center;gap:18px;min-width:0;padding:4px 0 4px var(--mast-gap);border-left:1px solid var(--ink)}
 .identity h1{font:400 var(--name)/.95 var(--caps);text-transform:uppercase;letter-spacing:.08em}
 .identity h1 a{text-decoration:none}

@@ -70,8 +70,13 @@ async function inline(fig) {
 // The first-visit intro shows a copy that draws in step with it.
 const mark = document.querySelector('.mark');
 const markImg = mark?.querySelector('img');
-const portrait = markImg ? svgOf(markImg).then(svg => { if (motion) mark.classList.add('drawing'); mark.replaceChildren(svg); return svg; }) : Promise.reject(new Error('No portrait'));
-portrait.catch(() => { /* Keep the static image. */ });
+// The static image waits hidden (.mark-wait, set in the head); if it was already shown (slow load), skip the draw-in.
+const portrait = markImg ? svgOf(markImg).then(svg => {
+  if (motion && getComputedStyle(markImg).opacity === '0') mark.classList.add('drawing');
+  mark.replaceChildren(svg);
+  return svg;
+}) : Promise.reject(new Error('No portrait'));
+portrait.catch(() => { /* Keep the static image. */ }).finally(() => document.documentElement.classList.remove('mark-wait'));
 const arts = [...document.querySelectorAll('.art')];
 if (hasIO && arts.length) {
   const loader = new IntersectionObserver(entries => {
