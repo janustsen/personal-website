@@ -10,7 +10,7 @@ const heldBack = ['V1', 'V3', 'V5', 'B1'];
 const results = [];
 // The first-visit intro plays once per tab session; the page checks below start from the settled page.
 const skipIntro = () => { try { sessionStorage.setItem('intro', '1'); } catch {} };
-// First-visit intro: the picture and greeting alone, then on a scroll, key or swipe (or after about 3 seconds)
+// First-visit intro: the line portrait (drawing itself in) and greeting alone, then on a scroll, key or swipe (or after about 3 seconds)
 // they spring into the header picture and name while the page fades in. A reload or a deep link lands straight on the page.
 async function introChecks(name, options, trigger) {
   const context = await browser.newContext(options);
@@ -32,9 +32,10 @@ async function introChecks(name, options, trigger) {
   const still = options.reducedMotion === 'reduce';
   await page.waitForTimeout(1600);
   assert.deepEqual(await state(), { on: true, stage: true, page: '0', h1: 'hidden' }, `${name}: only the intro shows on a first visit`);
-  const hold = await page.evaluate(() => ({ hi: document.querySelector('.intro-hi').textContent, face: document.querySelector('.intro-face').naturalWidth > 0,
+  const hold = await page.evaluate(() => ({ hi: document.querySelector('.intro-hi').textContent, face: document.querySelectorAll('.intro-face svg path').length > 0,
+    photo: document.querySelectorAll('img[src*="avatar"]').length,
     moving: document.querySelector('.intro-stage').getAnimations({ subtree: true }).filter(a => a.playState === 'running').length }));
-  assert.ok(hold.hi === 'Hey, I’m Janus!' && hold.face, `${name}: picture and greeting (${JSON.stringify(hold)})`);
+  assert.ok(hold.hi === 'Hey, I’m Janus!' && hold.face && !hold.photo, `${name}: line portrait and greeting, no photo (${JSON.stringify(hold)})`);
   assert.equal(await page.evaluate(() => document.querySelector('.intro-stage').children.length), 2, `${name}: the intro is only the picture and greeting, no scroll cue`);
   if (still) assert.equal(hold.moving, 0, `${name}: reduced motion keeps the intro still`);
   await page.screenshot({ path: join(evidence, `intro-${name}-1-start.png`) });
@@ -50,7 +51,8 @@ async function introChecks(name, options, trigger) {
   if (!still) {
     await page.waitForFunction(() => document.documentElement.classList.contains('intro-out'), null, { timeout: 4000 });
     await page.waitForTimeout(250);
-    const moving = await page.evaluate(() => [...document.querySelectorAll('.page *')].filter(el => el.getAnimations().length).length);
+    // The masthead portrait keeps drawing in, in step with the intro copy that lands on it; nothing else animates.
+    const moving = await page.evaluate(() => [...document.querySelectorAll('.page *')].filter(el => !el.matches('.mark') && el.getAnimations().length).length);
     assert.equal(moving, 0, `${name}: the page fades in as a whole; no blocks are dealt into place`);
     await page.screenshot({ path: join(evidence, `intro-${name}-2-mid.png`) });
   }
@@ -65,10 +67,8 @@ async function introChecks(name, options, trigger) {
     hidden: [...document.querySelectorAll('.reveal')].filter(el => el.getBoundingClientRect().top < innerHeight && getComputedStyle(el).opacity !== '1').length,
     mark: getComputedStyle(document.querySelector('.mark')).visibility }));
   assert.deepEqual(settled, { watch: { wide: 0, scrolled: 0 }, scrollY: 0, moved: 0, hidden: 0, mark: 'visible' }, `${name}: settled into the normal layout`);
-  // The normal page works after the intro: the portrait shows whole, the page scrolls and the bar takes over.
-  await page.waitForFunction(() => document.querySelector('#about .art svg'));
-  const drawn = () => page.locator('#about .art').evaluate(f => f.classList.contains('drawing') ? parseFloat(getComputedStyle(f).getPropertyValue('--p')) : 1);
-  assert.equal(await drawn(), 1, `${name}: the portrait shows whole, not partly drawn`);
+  // The normal page works after the intro: the masthead portrait finishes drawn, the page scrolls and the bar takes over.
+  await page.waitForFunction(() => { const m = document.querySelector('.mark'); return m.querySelector('svg') && (!m.classList.contains('drawing') || parseFloat(getComputedStyle(m).getPropertyValue('--p')) === 1); }, null, { timeout: 4000 });
   await page.mouse.move(width / 2, height / 2);
   await page.mouse.wheel(0, height * 0.6);
   await page.waitForTimeout(700);
@@ -219,10 +219,19 @@ try {
     }
     await page.waitForTimeout(900);
     assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0, 'Everything is visible after scrolling');
-    assert.ok(await page.locator('.mark').evaluate(img => img.complete && /\/avatar-(152|320|400)\.webp$/.test(img.currentSrc) && +img.currentSrc.match(/avatar-(\d+)/)[1] >= Math.min(400, img.width * devicePixelRatio) && img.alt === 'Janus Tsen'), 'Avatar mark loads as WebP, sharp at the screen density');
+    // Masthead mark: the line portrait (no photo anywhere), drawn in once on load with motion, whole without it.
+    assert.equal(await page.locator('img[src*="avatar"]').count(), 0, 'No profile photo on the page');
+    const mark = await page.locator('.mark').evaluate(async (m, js) => {
+      if (!js) { const img = m.querySelector('img'); return { svg: false, src: /\/assets\/drawings\/portrait\.svg\?v=\w+$/.test(img.src) && img.complete && img.naturalWidth > 0, alt: img.alt }; }
+      while (!m.querySelector('svg')) await new Promise(r => setTimeout(r, 50));
+      while (m.getAnimations().some(a => a.playState === 'running')) await new Promise(r => setTimeout(r, 100));
+      return { svg: m.querySelectorAll('svg path').length > 0, src: true, alt: m.querySelector('svg').getAttribute('aria-label'), drawing: m.classList.contains('drawing'),
+        p: m.classList.contains('drawing') ? parseFloat(getComputedStyle(m).getPropertyValue('--p')) : 1 };
+    }, name !== 'no-js');
+    assert.ok(mark.src && mark.alt === 'Line drawing of Janus Tsen' && (name === 'no-js' || (mark.svg && mark.p === 1 && mark.drawing === animated)), `Masthead mark is the line portrait, drawn in ${animated ? 'on load' : 'whole'} (${JSON.stringify(mark)})`);
     // Every span's drawing is on the page: inline SVG strokes with JavaScript, the image file without it.
     await page.waitForFunction(js => [...document.querySelectorAll('.art')].every(fig => js ? fig.querySelectorAll('svg path').length > 0 : fig.querySelector('img').complete && fig.querySelector('img').naturalWidth > 0), name !== 'no-js');
-    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [1, 1, 1, 1, 1, 1, 1, 1, 0], 'Exactly one drawing per section, none beside Other interests');
+    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [0, 1, 1, 1, 1, 1, 1, 1, 0], 'Exactly one drawing per section, none beside About (text only) or Other interests');
     await page.waitForFunction(() => { const path = [...document.querySelectorAll('.art')].pop().querySelector('svg path:last-of-type');
       return !path || parseFloat(getComputedStyle(path).strokeDashoffset) === 0; }, null, { timeout: 6000 });
     assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Links carry no arrow glyphs');
@@ -325,7 +334,7 @@ try {
   assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0);
   await context.close();
   results.push({ preferenceChange: 'reduced motion reveals everything', status: 'passed' });
-  // Every width: no sideways overflow or clipped header links, a large photo set left with the name beside it (below it on phones), the bar fits, and Other interests holds its three entries.
+  // Every width: no sideways overflow or clipped header links, a large portrait set left with the name beside it (below it on phones), the bar fits, and Other interests holds its three entries.
   for (const width of [360, 390, 620, 768, 820, 1024, 1180, 1240, 1440, 1920]) {
     const mobile = width < 700;
     const sized = await browser.newContext({ viewport: { width, height: 900 }, isMobile: mobile, hasTouch: mobile });
@@ -345,7 +354,7 @@ try {
     await page.waitForTimeout(450);
     const barFits = await page.evaluate(() => { const bar = document.querySelector('.bar'); return [...bar.children].every(el => getComputedStyle(el).display === 'none' || el.getBoundingClientRect().right <= innerWidth + 1); });
     assert.ok(r.wide <= 0 && r.outside === 0 && r.jumpScrolls, `${width}px: no sideways overflow or clipped text (${JSON.stringify(r)})`);
-    assert.ok(r.mark >= 96 && Math.abs(r.markLeft) < 2 && (width <= 560 ? r.stacked : r.beside), `${width}px: header photo is large and set left, the name ${width <= 560 ? 'below' : 'beside'} it (${JSON.stringify(r)})`);
+    assert.ok(r.mark >= 96 && Math.abs(r.markLeft) < 2 && (width <= 560 ? r.stacked : r.beside), `${width}px: header portrait is large and set left, the name ${width <= 560 ? 'below' : 'beside'} it (${JSON.stringify(r)})`);
     assert.ok(barFits, `${width}px: header bar fits the screen`);
     assert.deepEqual(r.interests, ['Writing & ideas', 'Homer Humanities', 'Karate'], `${width}px: Other interests holds its three entries`);
     assert.equal(r.aboutEntries, 0, `${width}px: those entries are no longer under About`);
