@@ -2,7 +2,7 @@
 
 A static personal website: one long homepage plus a Bookshelf page. Deploy `dist/`; no build or production dependencies. This redesign is for preview review; nothing goes live until Janus approves it.
 
-Cloudflare Pages uses `dist/404.html` for unknown URLs, with a link home. `dist/robots.txt` allows all crawlers. `dist/_headers` makes browsers revalidate the stylesheet, scripts and drawings on every load, so they never run stale against freshly deployed HTML. The homepage and Bookshelf declare their canonical URLs and Open Graph/Twitter card metadata.
+Cloudflare Pages uses `dist/404.html` for unknown URLs, with a link home. `dist/robots.txt` allows all crawlers. Every page links the stylesheet, scripts and drawings with a `?v=<content hash>` query, so a deploy that changes one gives returning visitors a new URL instead of a cached copy (Cloudflare serves them with a 4-hour browser cache regardless of `dist/_headers`). After editing any of those files, run `npm run stamp` and commit the updated HTML; `npm run lint` (and CI) fails while a stamp is stale. The homepage and Bookshelf declare their canonical URLs and Open Graph/Twitter card metadata.
 
 ## Installation
 
@@ -12,7 +12,7 @@ Cloudflare Pages uses `dist/404.html` for unknown URLs, with a link home. `dist/
 
 Preview: `python3 -u -m http.server 63027 --bind 127.0.0.1 --directory dist`.
 
-`npm test` drives both pages in a real browser; `npm run lint` checks JavaScript syntax for both site scripts and the verification script.
+`npm test` drives both pages in a real browser; `npm run lint` checks JavaScript syntax for both site scripts and the verification script, and that asset version stamps are current.
 
 For verification setup and detailed checks, follow [.agents/skills/verify-janus-site/SKILL.md](.agents/skills/verify-janus-site/SKILL.md).
 

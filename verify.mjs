@@ -18,7 +18,7 @@ async function introChecks(name, options, trigger) {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   // A blocked site.js must not leave the page hidden: the head script drops the intro after 4 seconds.
-  if (trigger === 'blocked') await page.route('**/site.js', route => route.abort());
+  if (trigger === 'blocked') await page.route('**/site.js*', route => route.abort());
   await page.goto(base);
   const state = () => page.evaluate(() => ({ on: document.documentElement.classList.contains('intro-on'), stage: !!document.querySelector('.intro-stage'),
     page: getComputedStyle(document.querySelector('.page')).opacity, h1: getComputedStyle(document.querySelector('.identity h1')).visibility }));
