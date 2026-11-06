@@ -326,11 +326,14 @@ try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     await context.addInitScript(skipIntro);
     const page = await context.newPage();
-    await page.route('**/site.js*', async route => { await new Promise(r => setTimeout(r, 1500)); await route.continue(); });
+    // Hold site.js until the hidden image is asserted, then release it, so the check never races the swap.
+    let release, held = new Promise(r => { release = r; });
+    await page.route('**/site.js*', async route => { await held; await route.continue(); });
     await page.goto(base, { waitUntil: 'commit' });
     await page.waitForFunction(() => { const img = document.querySelector('.mark img'); return img && img.complete && img.naturalWidth > 0; }, null, { timeout: 4000 });
     const waiting = await page.evaluate(() => ({ swapped: !!document.querySelector('.mark svg'), opacity: getComputedStyle(document.querySelector('.mark img')).opacity }));
     assert.deepEqual(waiting, { swapped: false, opacity: '0' }, 'Static portrait stays hidden while site.js loads');
+    release();
     await page.waitForFunction(() => document.querySelector('.mark svg'), null, { timeout: 6000 })
       .catch(() => { throw new Error('slow site.js: masthead portrait was never inlined'); });
     const p = await page.locator('.mark').evaluate(m => m.classList.contains('drawing') ? parseFloat(getComputedStyle(m).getPropertyValue('--p')) : null);
