@@ -1,7 +1,7 @@
 # Responsive layout and motion
 
 ## Sub-features
-All widths: a centered masthead with the photo above the name and links. Desktop: vertical section labels, and a full-width line drawing beside each section (see [rails.md](rails.md)). `verify.mjs` checks that no link carries a diagonal arrow glyph. Below 760px: each section’s drawing is stacked under its entries.
+Masthead: the photo, a vertical rule as tall as the photo, then the name, contact links and section links set left against the rule. At 560px and below the photo sits above, the rule turns horizontal and the section links wrap. Desktop: vertical section labels, and a full-width line drawing beside each section (see [rails.md](rails.md)). `verify.mjs` checks that no link carries a diagonal arrow glyph. Below 760px: each section’s drawing is stacked under its entries.
 
 ## User path and drive
 Scroll the homepage top to bottom. Sections' entries and cards fade and rise once as they enter the viewport; anything already on screen at load shows at once. `node verify.mjs` checks that below-the-fold entries start hidden only when JavaScript runs and motion is welcome, that all non-hidden entries are fully visible after scrolling, and that a reduced-motion preference set after load reveals those entries. Disclosures fade their contents in. Read the top, full-page, and disclosure screenshots as well as results.json.

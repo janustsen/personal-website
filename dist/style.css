@@ -3,7 +3,7 @@
 @font-face{font-family:Inter;src:url('/assets/fonts/inter.woff2') format('woff2');font-weight:400 700;font-display:swap}
 @font-face{font-family:"Unica One";src:url('/assets/fonts/unica-one.woff2') format('woff2');font-display:swap}
 
-:root{--ink:#000;--muted:#6b6b6b;--faint:#8f8f8f;--rule:rgba(0,0,0,.15);--line:rgba(0,0,0,.3);--wash:#f4f4f2;--label:5rem;--text:27rem;--gap:3.5rem;--bar:48px;--pin:calc(var(--bar) + 28px);--serif:"Crimson Pro",Georgia,serif;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--caps:"Unica One","Arial Narrow",sans-serif}
+:root{--ink:#000;--muted:#6b6b6b;--faint:#8f8f8f;--rule:rgba(0,0,0,.15);--line:rgba(0,0,0,.3);--wash:#f4f4f2;--label:5rem;--text:27rem;--gap:3.5rem;--bar:48px;--pin:calc(var(--bar) + 28px);--serif:"Crimson Pro",Georgia,serif;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--caps:"Unica One","Arial Narrow",sans-serif;--name:clamp(40px,5vw,72px)}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:calc(var(--bar) + 12px)}
 body{margin:0;background:#fff;color:var(--ink);font:14px/1.4 var(--sans);-webkit-font-smoothing:antialiased}
@@ -17,16 +17,18 @@ cite{font-style:inherit}
 
 .page{width:min(100% - 32px,72rem);margin:0 auto;padding:4.5rem 0 3rem}
 
-/* Masthead: one centred unit, the photo above the name and links. */
-.masthead{margin-bottom:3.5rem}
-.identity{text-align:center}
-.identity h1{margin-top:1.25rem;font:400 34px/1 var(--caps);text-transform:uppercase;letter-spacing:.02em}
+/* Masthead: the photo, a vertical rule as tall as the row, then the name, contact links and menu set left against it. */
+.masthead{margin-bottom:4.5rem}
+.identity{display:flex;align-items:stretch;gap:var(--mast-gap);--mast-gap:40px;--face:200px}
+.mark{display:block;flex:none;align-self:center;width:var(--face);height:var(--face);border-radius:20px;object-fit:cover;box-shadow:0 1px 2px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.06)}
+.who{display:flex;flex-direction:column;justify-content:center;gap:18px;min-width:0;padding:4px 0 4px var(--mast-gap);border-left:1px solid var(--ink)}
+.identity h1{font:400 var(--name)/.95 var(--caps);text-transform:uppercase;letter-spacing:.08em}
 .identity h1 a{text-decoration:none}
-.contact,.jump{display:flex;justify-content:center;flex-wrap:wrap;gap:5px 12px;margin-top:17px;font-size:14.5px}
-.jump{margin-top:12px;color:var(--muted)}
-.jump a{text-decoration-color:var(--rule)}
-.contact a,.jump a{padding:4px 0}
-.mark{display:block;width:120px;height:120px;margin:0 auto;border-radius:20px;object-fit:cover}
+.contact,.jump{display:flex;flex-wrap:wrap;gap:4px 22px;font-size:17px}
+.jump{gap:4px 24px;font-size:16px;color:var(--muted)}
+.jump a{text-decoration-color:transparent}
+.jump a:hover{text-decoration-color:currentColor;opacity:1;color:var(--ink)}
+.contact a,.jump a{padding:3px 0}
 .opening .hero{font:300 23px/1.2 var(--serif);max-width:31rem}
 .opening .hero+.hero{margin-top:.8rem}
 .opening .lede{margin-top:1.5rem}
@@ -106,20 +108,18 @@ details[open]>summary::after{content:" −"}
 .intro-hello>span{grid-area:1/1;white-space:nowrap}
 .intro-hi{font:400 56px/1.15 var(--serif)}
 .intro-hi span{display:inline-block}
-.intro-name{font:400 34px/1 var(--caps);text-transform:uppercase;letter-spacing:.02em;opacity:0}
+.intro-name{font:400 var(--name)/1 var(--caps);text-transform:uppercase;letter-spacing:.08em;opacity:0}
 @media(max-width:760px){.intro-stage{--face:120px}.intro-hi{font-size:42px}}
 
 /* Tablet: share the row more evenly so the drawing still fills a real column. */
-@media(max-width:1100px){.bar-social{display:none}}
+@media(max-width:1100px){.bar-social{display:none}.identity{--face:160px;--mast-gap:32px}.who{gap:14px}}
 @media(min-width:761px) and (max-width:1100px){.span{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);column-gap:2rem}.span .entries>.item:first-child h3::after{margin-right:-2rem}}
 @media(max-width:760px){
   :root{--label:3.6rem}
   .page{padding-top:3rem}
-  .identity{padding-bottom:2rem;border-bottom:1px solid var(--rule)}
-  .contact{justify-content:center;font-size:13.5px;gap:4px 10px}
-  /* Phones: the section links stay on one row and scroll sideways, like the condensed bar. */
-  .jump{justify-content:safe center;font-size:13.5px;gap:4px 12px;flex-wrap:nowrap;white-space:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
-  .mark{width:96px;height:96px;border-radius:16px}
+  .masthead{margin-bottom:3rem}
+  .contact{font-size:15px;gap:4px 16px}
+  .jump{font-size:14.5px;gap:2px 16px}
   .opening .hero{font-size:22px}
   .label{font-size:36px;position:static}
   /* Phones: the drawing sits after the section's first entry, so its own text is on screen while it draws. */
@@ -134,6 +134,15 @@ details[open]>summary::after{content:" −"}
   .bar-nav{margin-left:0;overflow-x:auto;scrollbar-width:none;flex:1;padding-right:8px}
   .bar-name{font-size:16px}
 }
+/* Phones: the photo sits above and the rule turns horizontal, still everything set left. */
+@media(max-width:560px){
+  .identity{flex-direction:column;align-items:flex-start;--face:112px;--mast-gap:20px}
+  .mark{align-self:flex-start;border-radius:16px}
+  .who{align-self:stretch;gap:12px;padding:var(--mast-gap) 0 0;border-left:0;border-top:1px solid var(--ink)}
+}
+
+/* About: the portrait is framed head to shoulders and kept near the text's height, beside it. */
+.span[data-art="portrait"] .art{position:static;aspect-ratio:1106/1194;max-height:none;width:min(100%,20rem)}
 
 /* Bookshelf: suggested-reading tier board. */
 .shelf-head{margin-bottom:2.5rem}

@@ -219,7 +219,7 @@ try {
     }
     await page.waitForTimeout(900);
     assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0, 'Everything is visible after scrolling');
-    assert.ok(await page.locator('.mark').evaluate(img => img.complete && img.currentSrc.endsWith(devicePixelRatio >= 2 ? '/avatar-320.webp' : '/avatar-152.webp') && img.alt === 'Janus Tsen'), 'Avatar mark loads as WebP, sharp at the screen density');
+    assert.ok(await page.locator('.mark').evaluate(img => img.complete && /\/avatar-(152|320|400)\.webp$/.test(img.currentSrc) && +img.currentSrc.match(/avatar-(\d+)/)[1] >= Math.min(400, img.width * devicePixelRatio) && img.alt === 'Janus Tsen'), 'Avatar mark loads as WebP, sharp at the screen density');
     // Every span's drawing is on the page: inline SVG strokes with JavaScript, the image file without it.
     await page.waitForFunction(js => [...document.querySelectorAll('.art')].every(fig => js ? fig.querySelectorAll('svg path').length > 0 : fig.querySelector('img').complete && fig.querySelector('img').naturalWidth > 0), name !== 'no-js');
     assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [1, 1, 1, 1, 1, 1, 1, 1, 0], 'Exactly one drawing per section, none beside Other interests');
@@ -325,7 +325,7 @@ try {
   assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0);
   await context.close();
   results.push({ preferenceChange: 'reduced motion reveals everything', status: 'passed' });
-  // Every width: no sideways overflow or clipped header links, a large centred photo, the bar fits, and Other interests holds its three entries.
+  // Every width: no sideways overflow or clipped header links, a large photo set left with the name beside it (below it on phones), the bar fits, and Other interests holds its three entries.
   for (const width of [360, 390, 620, 768, 820, 1024, 1180, 1240, 1440, 1920]) {
     const mobile = width < 700;
     const sized = await browser.newContext({ viewport: { width, height: 900 }, isMobile: mobile, hasTouch: mobile });
@@ -334,17 +334,18 @@ try {
     await page.goto(base, { waitUntil: 'networkidle' });
     const r = await page.evaluate(() => {
       const mark = document.querySelector('.mark').getBoundingClientRect(), W = innerWidth;
-      const outside = [...document.querySelectorAll('.masthead a, main h2, main h3, main p')].filter(el => { const b = el.getBoundingClientRect(); return b.width && (b.left < -1 || b.right > W + 1) && !el.closest('.jump'); }).length;
+      const outside = [...document.querySelectorAll('.masthead a, main h2, main h3, main p')].filter(el => { const b = el.getBoundingClientRect(); return b.width && (b.left < -1 || b.right > W + 1); }).length;
+      const name = document.querySelector('.identity h1 a').getBoundingClientRect(), page = document.querySelector('.page').getBoundingClientRect();
       const jump = document.querySelector('.jump');
       return { wide: document.documentElement.scrollWidth - W, outside, jumpScrolls: jump.scrollWidth > jump.clientWidth && getComputedStyle(jump).overflowX === 'auto' || jump.scrollWidth <= jump.clientWidth,
-        mark: Math.round(mark.width), offCentre: Math.abs(mark.left + mark.width / 2 - W / 2), interests: [...document.querySelectorAll('#interests h3')].map(h => h.textContent),
+        mark: Math.round(mark.width), markLeft: Math.round(mark.left - page.left), stacked: name.top >= mark.bottom, beside: name.left > mark.right && name.top < mark.bottom, interests: [...document.querySelectorAll('#interests h3')].map(h => h.textContent),
         aboutEntries: document.querySelectorAll('#about article').length };
     });
     await page.evaluate(() => scrollTo(0, 2000));
     await page.waitForTimeout(450);
     const barFits = await page.evaluate(() => { const bar = document.querySelector('.bar'); return [...bar.children].every(el => getComputedStyle(el).display === 'none' || el.getBoundingClientRect().right <= innerWidth + 1); });
     assert.ok(r.wide <= 0 && r.outside === 0 && r.jumpScrolls, `${width}px: no sideways overflow or clipped text (${JSON.stringify(r)})`);
-    assert.ok(r.mark >= 96 && r.offCentre < 2, `${width}px: header photo is large and centred (${JSON.stringify(r)})`);
+    assert.ok(r.mark >= 96 && Math.abs(r.markLeft) < 2 && (width <= 560 ? r.stacked : r.beside), `${width}px: header photo is large and set left, the name ${width <= 560 ? 'below' : 'beside'} it (${JSON.stringify(r)})`);
     assert.ok(barFits, `${width}px: header bar fits the screen`);
     assert.deepEqual(r.interests, ['Writing & ideas', 'Homer Humanities', 'Karate'], `${width}px: Other interests holds its three entries`);
     assert.equal(r.aboutEntries, 0, `${width}px: those entries are no longer under About`);
