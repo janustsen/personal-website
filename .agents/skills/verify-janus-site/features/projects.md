@@ -1,7 +1,7 @@
 # Project explanations and held-back entries
 
 ## Sub-features
-Verdnt Group and Trus disclosures under Building; professional entries under Experience; public evidence and personal context under About. Strategy, Values, Tech & AI, Design, and Books hold short insights and book notes as normal content. Values, Tech & AI and Design entries come from the evidence-checked insights report (only the site copy, never its evidence lines).
+Verdnt Group and Trus disclosures under Building; professional entries under Experience; the intro under About; writing, Homer Humanities and karate under Other interests. Strategy, Values, Tech & AI, Design, and Books hold short insights and book notes as normal content. All agent and AI ideas live in Tech & AI, merged where they overlapped. Values, Tech & AI and Design entries come from the evidence-checked insights report (only the site copy, never its evidence lines).
 
 ## Held back
 The four hidden entries (V1, V3, V5, B1) and how to publish or cut them are documented in [README.md](../../../../../README.md#design-and-sources).
