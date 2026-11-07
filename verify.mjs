@@ -19,6 +19,22 @@ async function portraitOnly(page) {
   assert.equal(await page.locator('#about img, #about svg, #about figure, #about picture, #about video, #about canvas').count(), 0, 'About is text only');
   assert.equal(await page.locator('.bar img, .bar svg, .bar picture').count(), 0, 'Header bar has no avatar or portrait');
 }
+function recordPortrait(selector) {
+  const samples = window.portraitSamples = [];
+  const deadline = performance.now() + 10000;
+  const tick = () => {
+    const el = document.querySelector(selector);
+    if (el?.querySelector('path')) {
+      const sample = { p: parseFloat(getComputedStyle(el).getPropertyValue('--p')), scroll: scrollY,
+        offsets: [...el.querySelectorAll('path')].map(path => parseFloat(getComputedStyle(path).strokeDashoffset.replace(/^calc\(/, ''))),
+        running: el.getAnimations().some(a => a.playState === 'running') };
+      if (!samples.length && sample.p > 0.08 && sample.p < 0.8) samples.push(sample);
+      else if (samples.length && sample.p > samples[0].p + 0.1) { samples.push(sample); return; }
+    }
+    if (performance.now() < deadline) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
 async function mastheadChecks(page, name, animated, js) {
   await portraitOnly(page);
   if (!js) {
@@ -27,17 +43,11 @@ async function mastheadChecks(page, name, animated, js) {
   } else {
     await page.waitForFunction(() => document.querySelector('.mark svg path'), null, { timeout: 6000 });
     if (animated) {
-      // Observe real stroke progress before any scroll, rather than only checking the finished class.
-      await page.waitForFunction(() => { const m = document.querySelector('.mark'), p = parseFloat(getComputedStyle(m).getPropertyValue('--p'));
-        return p > 0.08 && p < 0.8; }, null, { timeout: 4000 });
-      // Chrome can serialize a resolved offset as calc(1px).
-      const start = await page.locator('.mark').evaluate(m => ({ p: parseFloat(getComputedStyle(m).getPropertyValue('--p')), scroll: scrollY,
-        offsets: [...m.querySelectorAll('path')].map(p => parseFloat(getComputedStyle(p).strokeDashoffset.replace(/^calc\(/, ''))),
-        running: m.getAnimations().some(a => a.playState === 'running') }));
+      await page.waitForFunction(() => window.portraitSamples.length === 2, null, { timeout: 6000 });
+      const [start, progressed] = await page.evaluate(() => window.portraitSamples);
       assert.ok(start.running && start.scroll === 0 && start.offsets.some(v => v < 1) && start.offsets.some(v => v > 0), `${name}: strokes draw on load without scrolling (${JSON.stringify(start)})`);
-      await page.screenshot({ path: join(evidence, `${name}-portrait-1-drawing.png`) });
-      await page.waitForFunction(p => parseFloat(getComputedStyle(document.querySelector('.mark')).getPropertyValue('--p')) > p + 0.1, start.p, { timeout: 4000 });
-      await page.screenshot({ path: join(evidence, `${name}-portrait-2-progress.png`) });
+      assert.ok(progressed.p > start.p + 0.1 && progressed.scroll === 0, `${name}: strokes progress without scrolling`);
+      await writeFile(join(evidence, `${name}-portrait-progress.json`), JSON.stringify([start, progressed], null, 2));
     } else {
       assert.ok(await page.locator('.mark').evaluate(m => !m.getAnimations().some(a => a.playState === 'running') &&
         [...m.querySelectorAll('path')].every(p => parseFloat(getComputedStyle(p).strokeDashoffset.replace(/^calc\(/, '')) === 0)), `${name}: reduced-motion portrait is fully drawn immediately`);
@@ -54,12 +64,13 @@ async function mastheadChecks(page, name, animated, js) {
 // they spring into the header picture and name while the page fades in. A reload or a deep link lands straight on the page.
 async function introChecks(name, options, trigger) {
   const context = await browser.newContext(options);
+  await context.addInitScript(recordPortrait, '.intro-face');
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   // A blocked site.js must not leave the page hidden: the head script drops the intro after 4 seconds.
   if (trigger === 'blocked') await page.route('**/site.js*', route => route.abort());
-  await page.goto(base);
+  await page.goto(base, { waitUntil: trigger === 'none' || trigger === 'blocked' ? 'load' : 'domcontentloaded' });
   const state = () => page.evaluate(() => ({ on: document.documentElement.classList.contains('intro-on'), stage: !!document.querySelector('.intro-stage'),
     page: getComputedStyle(document.querySelector('.page')).opacity, h1: getComputedStyle(document.querySelector('.identity h1')).visibility,
     mark: getComputedStyle(document.querySelector('.mark img, .mark svg')).opacity }));
@@ -78,13 +89,13 @@ async function introChecks(name, options, trigger) {
   assert.deepEqual({ ...await state(), mark: undefined }, { on: true, stage: true, page: '0', h1: 'hidden', mark: undefined }, `${name}: only the intro shows on a first visit`);
   const hold = await page.evaluate(() => ({ hi: document.querySelector('.intro-hi').textContent, face: document.querySelectorAll('.intro-face svg path').length > 0,
     offsets: [...document.querySelectorAll('.intro-face svg path')].map(p => parseFloat(getComputedStyle(p).strokeDashoffset.replace(/^calc\(/, ''))),
+    children: document.querySelector('.intro-stage').children.length,
     moving: document.querySelector('.intro-stage').getAnimations({ subtree: true }).filter(a => a.playState === 'running').length }));
-  await portraitOnly(page);
   assert.ok(hold.hi === 'Hey, I’m Janus!' && hold.face, `${name}: line portrait and greeting`);
-  assert.ok(still ? hold.offsets.every(v => v === 0) : hold.offsets.some(v => v > 0) && hold.offsets.some(v => v < 1), `${name}: intro portrait ${still ? 'fully drawn' : 'partly drawn'} (${hold.offsets})`);
-  assert.equal(await page.evaluate(() => document.querySelector('.intro-stage').children.length), 2, `${name}: the intro is only the picture and greeting, no scroll cue`);
+  const offsets = still ? hold.offsets : await page.evaluate(() => window.portraitSamples[0]?.offsets || []);
+  assert.ok(offsets.length && (still ? offsets.every(v => v === 0) : offsets.some(v => v > 0) && offsets.some(v => v < 1)), `${name}: intro portrait ${still ? 'fully drawn' : 'partly drawn'} (${offsets})`);
+  assert.equal(hold.children, 2, `${name}: the intro is only the picture and greeting, no scroll cue`);
   if (still) assert.equal(hold.moving, 0, `${name}: reduced motion keeps the intro still`);
-  await page.screenshot({ path: join(evidence, `intro-${name}-1-start.png`) });
   // While the intro runs the page must not scroll or overflow sideways (a phone would zoom out).
   await page.evaluate(() => { window.introWatch = { wide: 0, scrolled: 0 }; const tick = () => { const w = window.introWatch;
     w.wide = Math.max(w.wide, document.documentElement.scrollWidth - innerWidth); w.scrolled = Math.max(w.scrolled, scrollY);
@@ -112,6 +123,7 @@ async function introChecks(name, options, trigger) {
     moved: [...document.querySelectorAll('.contact, .jump, .label, .opening > *, .item, .art')].filter(el => getComputedStyle(el).transform !== 'none' && !el.matches('.reveal:not(.in)')).length,
     hidden: [...document.querySelectorAll('.reveal')].filter(el => el.getBoundingClientRect().top < innerHeight && getComputedStyle(el).opacity !== '1').length,
     mark: getComputedStyle(document.querySelector('.mark')).visibility }));
+  await portraitOnly(page);
   assert.deepEqual(settled, { watch: { wide: 0, scrolled: 0 }, scrollY: 0, moved: 0, hidden: 0, mark: 'visible' }, `${name}: settled into the normal layout`);
   // The normal page works after the intro: the masthead portrait finishes drawn, the page scrolls and the bar takes over.
   await page.waitForFunction(() => { const m = document.querySelector('.mark'); return m.querySelector('svg') && (!m.classList.contains('drawing') || parseFloat(getComputedStyle(m).getPropertyValue('--p')) === 1); }, null, { timeout: 4000 });
@@ -239,6 +251,7 @@ try {
     const animated = name !== 'reduced' && name !== 'no-js';
     const context = await browser.newContext(options);
     await context.addInitScript(skipIntro);
+    if (animated) await context.addInitScript(recordPortrait, '.mark');
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
