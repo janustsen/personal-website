@@ -262,7 +262,7 @@ try {
     await page.evaluate(() => document.fonts.ready);
     await mastheadChecks(page, name, animated, name !== 'no-js');
     assert.equal(await page.locator('h1').textContent(), 'Janus Tsen');
-    assert.ok(await page.evaluate(() => document.fonts.check('300 17px "Crimson Pro"') && document.fonts.check('28px "Unica One"')), 'Site fonts load');
+    assert.ok(await page.evaluate(() => document.fonts.check('17px "Hedvig Letters Serif"') && document.fonts.check('italic 17px "Crimson Pro"') && document.fonts.check('28px "Unica One"')), 'Site fonts load');
     assert.equal(await page.getByRole('link', { name: 'GitHub', exact: true }).first().getAttribute('href'), 'https://github.com/janustsen');
     assert.equal(await page.getByRole('link', { name: 'Email', exact: true }).first().getAttribute('href'), 'mailto:janustsen@outlook.com');
     for (const id of ['building', 'experience', 'strategy', 'ai', 'values', 'design', 'books', 'interests', 'about']) assert.equal(await page.locator(`#${id} h2.label`).count(), 1, `${id} has a section label`);
