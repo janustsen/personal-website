@@ -10,6 +10,46 @@ const heldBack = ['V1', 'V3', 'V5', 'B1'];
 const results = [];
 // The first-visit intro plays once per tab session; the page checks below start from the settled page.
 const skipIntro = () => { try { sessionStorage.setItem('intro', '1'); } catch {} };
+// Check rendered media, not social-preview metadata or unused files in assets.
+async function portraitOnly(page) {
+  assert.deepEqual(await page.locator('img').evaluateAll(imgs => imgs.filter(img =>
+    !(img.matches('.mark > img, .intro-face > img') && /\/assets\/drawings\/portrait\.svg$/.test(new URL(img.currentSrc || img.src).pathname)) &&
+    !(img.matches('.art > img') && /\/assets\/drawings\/(building|experience|strategy|values|tech-ai|design|books)\.svg$/.test(new URL(img.currentSrc || img.src).pathname))
+  ).map(img => img.getAttribute('src'))), [], 'Only line drawings appear on the page; no profile photo');
+  assert.equal(await page.locator('#about img, #about svg, #about figure, #about picture, #about video, #about canvas').count(), 0, 'About is text only');
+  assert.equal(await page.locator('.bar img, .bar svg, .bar picture').count(), 0, 'Header bar has no avatar or portrait');
+}
+async function mastheadChecks(page, name, animated, js) {
+  await portraitOnly(page);
+  if (!js) {
+    await page.waitForFunction(() => { const img = document.querySelector('.mark img'); return img?.complete && img.naturalWidth > 0; }, null, { timeout: 6000 });
+    assert.equal(await page.locator('.mark img').evaluate(img => getComputedStyle(img).opacity), '1', 'No-JS portrait is visible');
+  } else {
+    await page.waitForFunction(() => document.querySelector('.mark svg path'), null, { timeout: 6000 });
+    if (animated) {
+      // Observe real stroke progress before any scroll, rather than only checking the finished class.
+      await page.waitForFunction(() => { const m = document.querySelector('.mark'), p = parseFloat(getComputedStyle(m).getPropertyValue('--p'));
+        return p > 0.08 && p < 0.8; }, null, { timeout: 4000 });
+      // Chrome can serialize a resolved offset as calc(1px).
+      const start = await page.locator('.mark').evaluate(m => ({ p: parseFloat(getComputedStyle(m).getPropertyValue('--p')), scroll: scrollY,
+        offsets: [...m.querySelectorAll('path')].map(p => parseFloat(getComputedStyle(p).strokeDashoffset.replace(/^calc\(/, ''))),
+        running: m.getAnimations().some(a => a.playState === 'running') }));
+      assert.ok(start.running && start.scroll === 0 && start.offsets.some(v => v < 1) && start.offsets.some(v => v > 0), `${name}: strokes draw on load without scrolling (${JSON.stringify(start)})`);
+      await page.screenshot({ path: join(evidence, `${name}-portrait-1-drawing.png`) });
+      await page.waitForFunction(p => parseFloat(getComputedStyle(document.querySelector('.mark')).getPropertyValue('--p')) > p + 0.1, start.p, { timeout: 4000 });
+      await page.screenshot({ path: join(evidence, `${name}-portrait-2-progress.png`) });
+    } else {
+      assert.ok(await page.locator('.mark').evaluate(m => !m.getAnimations().some(a => a.playState === 'running') &&
+        [...m.querySelectorAll('path')].every(p => parseFloat(getComputedStyle(p).strokeDashoffset.replace(/^calc\(/, '')) === 0)), `${name}: reduced-motion portrait is fully drawn immediately`);
+    }
+    await page.waitForFunction(() => { const m = document.querySelector('.mark'); return !m.getAnimations().some(a => a.playState === 'running') &&
+      [...m.querySelectorAll('path')].every(p => parseFloat(getComputedStyle(p).strokeDashoffset.replace(/^calc\(/, '')) === 0); }, null, { timeout: 6000 });
+    assert.equal(await page.locator('.mark').evaluate(m => m.classList.contains('drawing')), animated, `${name}: reduced motion skips draw-in`);
+    assert.equal(await page.evaluate(() => scrollY), 0, `${name}: portrait completes without scrolling`);
+  }
+  await page.screenshot({ path: join(evidence, `${name}-portrait-3-finished.png`) });
+  results.push({ portrait: name, status: 'passed', mode: !js ? 'static SVG image' : animated ? 'strokes progress without scroll' : 'fully drawn, no animation' });
+}
 // First-visit intro: the line portrait (drawing itself in) and greeting alone, then on a scroll, key or swipe (or after about 3 seconds)
 // they spring into the header picture and name while the page fades in. A reload or a deep link lands straight on the page.
 async function introChecks(name, options, trigger) {
@@ -26,6 +66,9 @@ async function introChecks(name, options, trigger) {
   if (trigger === 'blocked') await page.waitForTimeout(4500);
   if (trigger === 'none' || trigger === 'blocked') {
     assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible', mark: '1' }, `${name}: ${trigger === 'blocked' ? 'page and portrait show once a blocked site.js cancels the intro' : 'no intro without JavaScript'}`);
+    await portraitOnly(page);
+    assert.ok(await page.locator('.mark img').evaluate(img => img.complete && img.naturalWidth > 0 && /\/assets\/drawings\/portrait\.svg$/.test(new URL(img.src).pathname)), `${name}: loaded line portrait fallback`);
+    await page.screenshot({ path: join(evidence, `intro-${name}-fallback.png`) });
     await context.close();
     results.push({ intro: name, status: 'passed', shown: false });
     return;
@@ -34,9 +77,11 @@ async function introChecks(name, options, trigger) {
   await page.waitForTimeout(1600);
   assert.deepEqual({ ...await state(), mark: undefined }, { on: true, stage: true, page: '0', h1: 'hidden', mark: undefined }, `${name}: only the intro shows on a first visit`);
   const hold = await page.evaluate(() => ({ hi: document.querySelector('.intro-hi').textContent, face: document.querySelectorAll('.intro-face svg path').length > 0,
-    photo: document.querySelectorAll('img[src*="avatar"]').length,
+    offsets: [...document.querySelectorAll('.intro-face svg path')].map(p => parseFloat(getComputedStyle(p).strokeDashoffset.replace(/^calc\(/, ''))),
     moving: document.querySelector('.intro-stage').getAnimations({ subtree: true }).filter(a => a.playState === 'running').length }));
-  assert.ok(hold.hi === 'Hey, I’m Janus!' && hold.face && !hold.photo, `${name}: line portrait and greeting, no photo (${JSON.stringify(hold)})`);
+  await portraitOnly(page);
+  assert.ok(hold.hi === 'Hey, I’m Janus!' && hold.face, `${name}: line portrait and greeting`);
+  assert.ok(still ? hold.offsets.every(v => v === 0) : hold.offsets.some(v => v > 0) && hold.offsets.some(v => v < 1), `${name}: intro portrait ${still ? 'fully drawn' : 'partly drawn'} (${hold.offsets})`);
   assert.equal(await page.evaluate(() => document.querySelector('.intro-stage').children.length), 2, `${name}: the intro is only the picture and greeting, no scroll cue`);
   if (still) assert.equal(hold.moving, 0, `${name}: reduced motion keeps the intro still`);
   await page.screenshot({ path: join(evidence, `intro-${name}-1-start.png`) });
@@ -96,6 +141,7 @@ async function railChecks(context, name, pinned, animated) {
   await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
   const bar = page.locator('.bar');
   assert.equal(await bar.evaluate(el => el.classList.contains('on')), false, 'Bar hidden while the header shows');
+  await page.screenshot({ path: join(evidence, `rails-${name}-bar-hidden.png`) });
   const span = page.locator('.span[data-art="strategy"]');
   const fig = span.locator('.art');
   await span.scrollIntoViewIfNeeded();
@@ -104,6 +150,7 @@ async function railChecks(context, name, pinned, animated) {
     await page.evaluate(t => { const s = document.querySelector('.span[data-art="strategy"]'); const f = s.querySelector('.art');
       const pin = parseFloat(getComputedStyle(f).top) || 0; scrollTo(0, scrollY + s.getBoundingClientRect().top - pin + t * (s.offsetHeight - f.offsetHeight)); }, t);
     await page.waitForTimeout(250);
+    await page.screenshot({ path: join(evidence, `rails-${name}-pin-${t}.png`) });
     return page.evaluate(() => { const f = document.querySelector('.span[data-art="strategy"] .art'); const l = document.querySelector('#strategy-label');
       return { top: f.getBoundingClientRect().top, label: l.getBoundingClientRect().top, pin: parseFloat(getComputedStyle(f).top), position: getComputedStyle(f).position,
         p: f.classList.contains('drawing') ? parseFloat(getComputedStyle(f).getPropertyValue('--p')) : 1, drawing: f.classList.contains('drawing'), bar: document.querySelector('.bar').classList.contains('on'),
@@ -133,7 +180,10 @@ async function railChecks(context, name, pinned, animated) {
       return { p: parseFloat(getComputedStyle(f).getPropertyValue('--p')), visibleText, artTop: f.getBoundingClientRect().top, artBottom: f.getBoundingClientRect().bottom };
     });
     const samples = [];
-    for (const frac of [0.9, 0.75, 0.5, 0.3, 0.1]) { await place(frac); await page.waitForTimeout(200); samples.push(await read()); }
+    for (const frac of [0.9, 0.75, 0.5, 0.3, 0.1]) {
+      await place(frac); await page.waitForTimeout(200); samples.push(await read());
+      await page.screenshot({ path: join(evidence, `rails-${name}-draw-${frac}.png`) });
+    }
     if (pinned) for (let k = 1; k <= 12; k++) { await page.evaluate(() => scrollBy(0, innerHeight * 0.15)); await page.waitForTimeout(120); const r = await read(); samples.push(r); if (r.p >= 1) break; }
     const ps = samples.map(x => x.p);
     assert.equal(ps[0], 0, `${name}: nothing drawn before the section enters (${ps})`);
@@ -172,6 +222,7 @@ async function railChecks(context, name, pinned, animated) {
   await page.evaluate(() => scrollTo(0, 0));
   await page.waitForTimeout(500);
   assert.equal(await bar.evaluate(el => el.classList.contains('on')), false, `${name}: bar expands back into the header at the top`);
+  await page.screenshot({ path: join(evidence, `rails-${name}-bar-return.png`) });
   await page.close();
   results.push({ rails: name, status: 'passed' });
 }
@@ -194,11 +245,12 @@ try {
     page.on('response', response => { if (response.url().startsWith(base) && response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
     assert.equal((await page.goto(base, { waitUntil: 'networkidle' })).status(), 200);
     await page.evaluate(() => document.fonts.ready);
+    await mastheadChecks(page, name, animated, name !== 'no-js');
     assert.equal(await page.locator('h1').textContent(), 'Janus Tsen');
     assert.ok(await page.evaluate(() => document.fonts.check('300 17px "Crimson Pro"') && document.fonts.check('28px "Unica One"')), 'Site fonts load');
     assert.equal(await page.getByRole('link', { name: 'GitHub', exact: true }).first().getAttribute('href'), 'https://github.com/janustsen');
     assert.equal(await page.getByRole('link', { name: 'Email', exact: true }).first().getAttribute('href'), 'mailto:janustsen@outlook.com');
-    for (const id of ['building', 'experience', 'strategy', 'ai', 'values', 'books', 'interests', 'about']) assert.equal(await page.locator(`#${id} h2.label`).count(), 1, `${id} has a section label`);
+    for (const id of ['building', 'experience', 'strategy', 'ai', 'values', 'design', 'books', 'interests', 'about']) assert.equal(await page.locator(`#${id} h2.label`).count(), 1, `${id} has a section label`);
     assert.ok(await noOverflow(page), `${name}: no horizontal overflow at load`);
     await page.screenshot({ path: join(evidence, `${name}-home-top.png`) });
 
@@ -221,7 +273,7 @@ try {
     await page.waitForTimeout(900);
     assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0, 'Everything is visible after scrolling');
     // Masthead mark: the line portrait (no photo anywhere), drawn in once on load with motion, whole without it.
-    assert.equal(await page.locator('img[src*="avatar"]').count(), 0, 'No profile photo on the page');
+    await portraitOnly(page);
     if (name !== 'no-js') {
       await page.waitForFunction(() => document.querySelector('.mark svg'), null, { timeout: 6000 })
         .catch(() => { throw new Error(`${name}: masthead portrait was never inlined (portrait.svg fetch or site.js failed)`); });
@@ -244,6 +296,10 @@ try {
 
     // Section jumps and project disclosures.
     await page.evaluate(() => scrollTo(0, 0));
+    await page.waitForFunction(() => scrollY === 0, null, { timeout: 6000 });
+    await page.waitForTimeout(100);
+    if (name !== 'no-js') assert.ok(await page.locator('.mark').evaluate(m =>
+      !m.getAnimations().some(a => a.playState === 'running') && [...m.querySelectorAll('path')].every(p => parseFloat(getComputedStyle(p).strokeDashoffset.replace(/^calc\(/, '')) === 0)), `${name}: scrolling back does not replay the portrait`);
     await page.locator('.jump').getByRole('link', { name: 'Experience' }).click();
     await page.waitForURL(`${base}#experience`);
     for (let attempt = 0; attempt < 50 && Math.abs(await page.locator('#experience').evaluate(el => el.getBoundingClientRect().top)) >= 4; attempt++) await page.waitForTimeout(100);
@@ -270,6 +326,8 @@ try {
     await page.goto(new URL('bookshelf/', base).href, { waitUntil: 'networkidle' });
     assert.equal(await page.locator('h1').innerText(), 'BOOKSHELF');
     assert.equal(await page.locator('.book').count(), 20);
+    await portraitOnly(page);
+    assert.equal(await page.locator('img, svg, .art').count(), 0, 'Bookshelf has no drawings or photos');
     assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Bookshelf links carry no arrow glyphs');
     const book = page.locator('[data-book="strategy"]');
     await book.locator('summary').click();
