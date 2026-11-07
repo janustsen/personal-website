@@ -45,24 +45,38 @@ function scrub(fig) {
   }
   fig.style.setProperty('--p', Math.min(1, Math.max(0, t)).toFixed(3));
 }
+async function svgOf(img) {
+  const res = await fetch(img.currentSrc || img.src);
+  if (!res.ok) throw new Error(`${res.status}`);
+  const svg = new DOMParser().parseFromString(await res.text(), 'image/svg+xml').documentElement;
+  if (svg.nodeName !== 'svg') throw new Error('Not an SVG');
+  if (img.alt) { svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', img.alt); } else svg.setAttribute('aria-hidden', 'true');
+  const paths = svg.querySelectorAll('path');
+  paths.forEach((path, i) => { path.setAttribute('pathLength', '1'); path.style.setProperty('--d', (i / paths.length * 0.92).toFixed(4)); });
+  return document.importNode(svg, true);
+}
 async function inline(fig) {
   const img = fig.querySelector('img');
   if (!img) return;
   try {
-    const res = await fetch(img.currentSrc || img.src);
-    if (!res.ok) return;
-    const svg = new DOMParser().parseFromString(await res.text(), 'image/svg+xml').documentElement;
-    if (svg.nodeName !== 'svg') return;
-    if (img.alt) { svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', img.alt); } else svg.setAttribute('aria-hidden', 'true');
-    const paths = svg.querySelectorAll('path');
-    paths.forEach((path, i) => { path.setAttribute('pathLength', '1'); path.style.setProperty('--d', (i / paths.length * 0.92).toFixed(4)); });
-    // The portrait is a likeness, so it shows whole; the other drawings draw in.
-    if (motion && fig.parentElement.dataset.art !== 'portrait') fig.classList.add('drawing');
+    const svg = await svgOf(img);
+    if (motion) fig.classList.add('drawing');
     scrub(fig);
-    fig.replaceChildren(document.importNode(svg, true));
+    fig.replaceChildren(svg);
     near.add(fig); request();
   } catch { /* Keep the static image. */ }
 }
+// Masthead portrait: inlined at once and drawn in over a couple of seconds on load, no scroll needed.
+// The first-visit intro shows a copy that draws in step with it.
+const mark = document.querySelector('.mark');
+const markImg = mark?.querySelector('img');
+// The static image waits hidden (.mark-wait, set in the head); if it was already shown (slow load), skip the draw-in.
+const portrait = markImg ? svgOf(markImg).then(svg => {
+  if (motion && getComputedStyle(markImg).opacity === '0') mark.classList.add('drawing');
+  mark.replaceChildren(svg);
+  return svg;
+}) : Promise.reject(new Error('No portrait'));
+portrait.catch(() => { /* Keep the static image. */ }).finally(() => document.documentElement.classList.remove('mark-wait'));
 const arts = [...document.querySelectorAll('.art')];
 if (hasIO && arts.length) {
   const loader = new IntersectionObserver(entries => {
@@ -106,7 +120,7 @@ addEventListener('resize', request);
 request();
 
 // First-visit intro. The head script in index.html adds .intro-on once per tab session, only with JavaScript,
-// working sessionStorage and no deep link. The picture pops in and "Hey, I'm Janus!" rises in, alone on the screen.
+// working sessionStorage and no deep link. The line portrait draws itself in and "Hey, I'm Janus!" rises in, alone on the screen.
 // The first scroll, swipe, key or tap (or 3 seconds without one) whips them into the header as the page fades in.
 // Reduced motion keeps both still and swaps to the page with a short fade.
 const root = document.documentElement;
@@ -124,11 +138,17 @@ function intro() {
   const stage = document.createElement('div');
   stage.className = 'intro-stage';
   stage.setAttribute('aria-hidden', 'true');
-  stage.innerHTML = `<img class="intro-face" src="/assets/avatar-320.webp" alt=""><p class="intro-hello"><span class="intro-hi">${'Hey, I’m Janus!'.replace(/\S/g, '<span>$&</span>')}</span><span class="intro-name">Janus Tsen</span></p>`;
+  stage.innerHTML = `<div class="intro-face"></div><p class="intro-hello"><span class="intro-hi">${'Hey, I’m Janus!'.replace(/\S/g, '<span>$&</span>')}</span><span class="intro-name">Janus Tsen</span></p>`;
   document.body.append(stage);
   const [face, hello] = stage.children, [hi, name] = hello.children;
+  // Added in the same frame as the masthead copy, so the hand-off lands on a drawing at the same stage.
+  portrait.then(svg => {
+    const copy = svg.cloneNode(true), mask = copy.querySelector('mask');
+    if (mask) { mask.id += '-intro'; copy.querySelector('[mask]')?.setAttribute('mask', `url(#${mask.id})`); }
+    face.classList.toggle('drawing', mark.classList.contains('drawing'));
+    face.append(copy);
+  }, () => face.append(Object.assign(new Image(), { src: markImg?.src || '/assets/drawings/portrait.svg', alt: '' })));
   if (!still) {
-    face.animate([{ transform: 'rotate(-25deg) scale(0)' }, { transform: 'rotate(0deg) scale(1)' }], { duration: 650, easing: back });
     [...hi.children].forEach((letter, i) => {
       const timing = { duration: 450, delay: 350 + i * 40, fill: 'backwards' };
       letter.animate([{ translate: '0 46px', opacity: 0 }, { opacity: 1, offset: 0.4 }, { translate: '0 0', opacity: 1 }], { ...timing, easing: back });
@@ -162,18 +182,18 @@ function intro() {
       return;
     }
     const centre = el => { const r = el.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, r.width]; };
-    const mark = document.querySelector('.mark'), [nx, ny] = centre(document.querySelector('.identity h1 a'));
+    const [nx, ny] = centre(document.querySelector('.identity h1 a'));
     root.classList.add('intro-out');
     const shown = document.querySelector('.page').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, easing: out }).finished;
 
     // Picture and greeting: a quick wind-up, then a spring into the header picture and name.
     const [fx, fy, fw] = centre(face), [hx, hy] = centre(hello);
-    const [mx, my, mw] = centre(mark), radius = parseFloat(getComputedStyle(mark).borderTopLeftRadius);
+    const [mx, my, mw] = centre(mark);
     const k = mw / fw, whip = { duration: 600, fill: 'forwards' };
     face.animate([
-      { transform: 'translate(0px, 0px) rotate(0deg) scale(1)', borderRadius: '50%', opacity: 1, easing: inout },
-      { transform: 'translate(0px, 0px) rotate(-6deg) scale(1.08)', borderRadius: '50%', opacity: 1, offset: 1 / 6, easing: spring },
-      { transform: `translate(${mx - fx}px, ${my - fy}px) rotate(0deg) scale(${k})`, borderRadius: `${radius / k}px`, opacity: 1 },
+      { transform: 'translate(0px, 0px) rotate(0deg) scale(1)', opacity: 1, easing: inout },
+      { transform: 'translate(0px, 0px) rotate(-6deg) scale(1.08)', opacity: 1, offset: 1 / 6, easing: spring },
+      { transform: `translate(${mx - fx}px, ${my - fy}px) rotate(0deg) scale(${k})`, opacity: 1 },
     ], whip);
     const wind = 1 / 12;
     hi.animate([{ opacity: 1, transform: 'scale(1)', easing: spring }, { opacity: 1, transform: 'scale(1)', offset: wind, easing: spring }, { opacity: 0, transform: 'scale(.36)' }], whip);
