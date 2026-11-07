@@ -90,8 +90,10 @@ async function introChecks(name, options, trigger) {
   const hold = await page.evaluate(() => ({ hi: document.querySelector('.intro-hi').textContent, face: document.querySelectorAll('.intro-face svg path').length > 0,
     offsets: [...document.querySelectorAll('.intro-face svg path')].map(p => parseFloat(getComputedStyle(p).strokeDashoffset.replace(/^calc\(/, ''))),
     children: document.querySelector('.intro-stage').children.length,
+    images: document.querySelectorAll('.intro-stage img').length,
     moving: document.querySelector('.intro-stage').getAnimations({ subtree: true }).filter(a => a.playState === 'running').length }));
   assert.ok(hold.hi === 'Hey, I’m Janus!' && hold.face, `${name}: line portrait and greeting`);
+  assert.equal(hold.images, 0, `${name}: intro contains no photo images`);
   const offsets = still ? hold.offsets : await page.evaluate(() => window.portraitSamples[0]?.offsets || []);
   assert.ok(offsets.length && (still ? offsets.every(v => v === 0) : offsets.some(v => v > 0) && offsets.some(v => v < 1)), `${name}: intro portrait ${still ? 'fully drawn' : 'partly drawn'} (${offsets})`);
   assert.equal(hold.children, 2, `${name}: the intro is only the picture and greeting, no scroll cue`);
