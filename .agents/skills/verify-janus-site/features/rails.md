@@ -7,7 +7,7 @@
 - Rails (wider than 760px): the section label and the drawing are `position: sticky` just below the bar. They stay pinned while the entries scroll and release when the span ends.
 - Draw-in: `site.js` swaps each image for its inline SVG and gives every stroke `pathLength=1` and a start point `--d`, in file order.
   - Scroll sets `--p` from 0 to 1 while the section is on screen. Drawing starts when the section's top reaches 85% of the viewport and finishes about two-thirds of the way through the section, so text is always beside a partly drawn image. It always completes before the drawing releases, or by the page end for the last section.
-  - Strokes draw in through `stroke-dashoffset`.
+  - Strokes draw in through `stroke-dashoffset`. With motion, every stroke also has a faint copy underneath (`.ghost`, 15% opacity), so a drawing that has not drawn in yet (Building beside the text at the top of the page) reads as a light sketch instead of an empty column.
   - Phones have no rails. Each drawing sits after its section's first entry and scrubs against its own position: it starts as it enters at 85% and completes by the time its top reaches 20%.
   - With reduced motion or no JavaScript, drawings show fully drawn.
 - Header bar: a fixed bar slides in once the masthead leaves the viewport and slides out at the top.

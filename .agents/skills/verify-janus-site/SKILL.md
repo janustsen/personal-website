@@ -27,4 +27,6 @@ The verification script closes only its own Chrome in `finally`. Keep the owned 
 ## Helpers and maintenance
 `verify.mjs` is the executable check. The feature map is in `features/`, including `features/bookshelf.md`. Keep it current using `maintain-verification-skill` after changes.
 
+An egg pass at desktop, phone (touch) and reduced-motion desktop drives the easter eggs in the drawings and the portrait (see `features/eggs.md`); read `eggs-*.png`.
+
 The drive also verifies all 20 Bookshelf entries, that they carry no tier or status menus, native no-JS disclosure, keyboard tier moves (select a book and press S, A, B or C) with persistence after reload, search/topic filtering, reset, and desktop drag-and-drop.

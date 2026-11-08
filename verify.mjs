@@ -151,6 +151,130 @@ async function introChecks(name, options, trigger) {
   results.push({ intro: name, status: 'passed', trigger, reorderMs: trigger === 'auto' ? null : Math.round(ended - fired), autoSettledMs: trigger === 'auto' ? Math.round(ended) : null });
 }
 // Pinned rails, scroll-scrubbed drawing and the condensed header bar.
+// Easter eggs in the drawings (dist/eggs.js): drag, tap and hover parts of each drawing and the portrait.
+// Points are in each drawing's own SVG units, mapped to the screen with the SVG's transform.
+async function eggChecks(context, name, touch, animated) {
+  await context.addInitScript(skipIntro);
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const url = page.url.bind(page);
+  await page.goto(base, { waitUntil: 'networkidle' });
+  await page.waitForFunction(() => document.querySelector('.mark .egg-hit') && document.querySelector('.span[data-art="building"] .egg-hit'), null, { timeout: 8000 });
+  // Before a section drawing draws in, a faint copy of it shows, so its space never looks empty.
+  const sketch = await page.evaluate(() => [...document.querySelectorAll('.art')].filter(f => f.querySelector('.egg-hit')).map(f => {
+    const ink = f.querySelectorAll('svg > g > path:not(.ghost, .egg-fill), svg .egg > path:not(.ghost, .egg-new)').length, ghosts = [...f.querySelectorAll('.ghost')];
+    return { ink, ghosts: ghosts.length, opacity: ghosts[0] && getComputedStyle(ghosts[0]).opacity };
+  }));
+  for (const s of sketch) assert.ok(animated ? s.ghosts === s.ink && s.opacity === '0.15' : s.ghosts === 0, `${name}: faint sketch under each drawing (${JSON.stringify(s)})`);
+  if (animated && !touch) {
+    const top = await page.evaluate(() => { const f = document.querySelector('.span[data-art="building"] .art'); return { p: parseFloat(getComputedStyle(f).getPropertyValue('--p')), visible: f.getBoundingClientRect().top < innerHeight }; });
+    assert.ok(top.visible && top.p < 0.2, `${name}: Building drawing is on screen at the top, barely drawn (${JSON.stringify(top)})`);
+    await page.screenshot({ path: join(evidence, `eggs-${name}-sketch-at-top.png`) });
+  }
+  const parts = () => page.evaluate(() => ['building', 'experience', 'values'].map(a => document.querySelectorAll(`.span[data-art="${a}"] .egg-hit`).length).concat(document.querySelectorAll('.mark .egg-hit').length));
+  const cdp = touch ? await context.newCDPSession(page) : null;
+  const at = (sel, x, y) => page.evaluate(([sel, x, y]) => { const m = document.querySelector(sel).getScreenCTM(); return [m.a * x + m.e, m.d * y + m.f]; }, [sel, x, y]);
+  const tap = async (sel, x, y) => { const [sx, sy] = await at(sel, x, y); if (touch) await page.touchscreen.tap(sx, sy); else await page.mouse.click(sx, sy); await page.waitForTimeout(80); };
+  const drag = async (sel, from, to, during) => {
+    const [a, b] = await at(sel, ...from), [c, d] = await at(sel, ...to);
+    if (touch) {
+      const send = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+      await send('touchStart', a, b);
+      for (let i = 1; i <= 8; i++) { await send('touchMove', a + (c - a) * i / 8, b + (d - b) * i / 8); await page.waitForTimeout(16); }
+      await during?.(); await send('touchEnd');
+    } else { await page.mouse.move(a, b); await page.mouse.down(); await page.mouse.move(c, d, { steps: 8 }); await during?.(); await page.mouse.up(); }
+  };
+  // Settle a section's drawing fully drawn and on screen.
+  const show = async art => {
+    await page.evaluate(art => { const s = document.querySelector(`.span[data-art="${art}"]`), f = s.querySelector('.art');
+      scrollTo({ top: scrollY + (innerWidth > 760 ? s.getBoundingClientRect().top + s.offsetHeight - f.offsetHeight - 160 : f.getBoundingClientRect().top - 60), behavior: 'instant' }); }, art);
+    await page.waitForFunction(art => document.querySelector(`.span[data-art="${art}"] .egg-hit`), art, { timeout: 8000 });
+    await page.waitForTimeout(500);
+  };
+  const shot = async (file, sel) => page.locator(sel).screenshot({ path: join(evidence, `eggs-${name}-${file}.png`) });
+  const chair = () => page.evaluate(() => getComputedStyle(document.querySelector('.span[data-art="building"] .egg-back').parentNode).transform);
+  const B = '.span[data-art="building"] .art > svg', E = '.span[data-art="experience"] .art > svg', V = '.span[data-art="values"] .art > svg', M = '.mark > svg';
+
+  await show('building');
+  // A chair rolls with the pointer, holding the page still, and eases back on release (at once with reduced motion).
+  const y0 = await page.evaluate(() => scrollY);
+  let during;
+  await drag(B, [250, 820], [330, 820], async () => { during = await chair(); await shot('building-chair-drag', B); });
+  assert.ok(Math.abs(Number(during.split(', ')[4]) - 80) < 1.5, `${name}: chair follows the drag (${during})`);
+  assert.equal(await page.evaluate(() => scrollY), y0, `${name}: dragging a chair does not scroll the page`);
+  if (animated) assert.notEqual(await chair(), 'matrix(1, 0, 0, 1, 0, 0)', `${name}: chair eases back rather than jumping`);
+  await page.waitForTimeout(900);
+  assert.ok(['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(await chair()), `${name}: chair is back in place`);
+  if (touch) {
+    // A vertical swipe that starts on a draggable part still scrolls the page.
+    const [a, b] = await at(B, 250, 820);
+    const send = (type, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: a, y }] });
+    await send('touchStart', b); for (let i = 1; i <= 8; i++) { await send('touchMove', b - i * 25); await page.waitForTimeout(16); } await send('touchEnd');
+    await page.waitForTimeout(300);
+    assert.ok(await page.evaluate(() => scrollY) > y0 + 50, `${name}: a vertical swipe over a chair scrolls the page`);
+    await show('building');
+  }
+  // Taps: a shelf drink lifts, the can fizzes, the chart regrows, the laptop sources tick off.
+  await tap(B, 560, 150); await tap(B, 370, 700); await tap(B, 340, 515); await tap(B, 580, 590);
+  if (animated) assert.ok(await page.evaluate(() => [...document.querySelectorAll('.span[data-art="building"] .egg')].some(g => g.getAnimations().length)), `${name}: tapped parts animate`);
+  assert.ok(await page.evaluate(() => document.querySelectorAll('.span[data-art="building"] .egg-new:not(.egg-back)').length >= 6), `${name}: fizz and ticks appear`);
+  await page.waitForTimeout(300);
+  await shot('building-taps', B);
+  // Secret: five taps on the idea card switch on a light bulb.
+  for (let i = 0; i < 5; i++) await tap(B, 260, 220);
+  await page.waitForTimeout(1600);
+  assert.ok(await page.locator('.egg-bulb').count() === 1, `${name}: light bulb secret`);
+  await shot('building-bulb', B);
+
+  await show('experience');
+  await drag(E, [140, 105], [400, 105]);
+  await page.waitForTimeout(800);
+  assert.ok(await page.evaluate(() => [...document.querySelectorAll('.span[data-art="experience"] .egg')].some(g => { const [x, y] = (g.style.transform.match(/-?[\d.]+/g) || []).map(Number); return Math.abs(x - 260) < 1.5 && y === 0; })), `${name}: a cloud stays where it is dropped`);
+  await tap(E, 320, 300); await tap(E, 170, 560); await tap(E, 320, 560); await tap(E, 320, 560); await tap(E, 600, 560); await tap(E, 460, 776);
+  assert.ok(await page.evaluate(() => document.querySelectorAll('.span[data-art="experience"] .egg-dot').length) === 2, `${name}: Willis Tower lights blink`);
+  await page.waitForTimeout(300);
+  await shot('experience-taps', E);
+  for (let i = 0; i < 5; i++) await tap(E, 572, 300);
+  await page.waitForTimeout(2500);
+  assert.ok(await page.locator('.egg-sky g').count() === 1, `${name}: plane secret`);
+  await shot('experience-plane', E);
+
+  await show('values');
+  // A pawn moves anywhere on the board and stays there.
+  await drag(V, [262, 425], [330, 470]);
+  await page.waitForTimeout(800);
+  assert.ok(await page.evaluate(() => [...document.querySelectorAll('.span[data-art="values"] .egg')].some(g => { const [x, y] = (g.style.transform.match(/-?[\d.]+/g) || []).map(Number); return Math.abs(x - 68) < 1.5 && Math.abs(y - 45) < 1.5; })), `${name}: pawn stays where it is dropped`);
+  await tap(V, 360, 445); await tap(V, 540, 130); await tap(V, 560, 545); await tap(V, 560, 670);
+  await page.waitForTimeout(300);
+  await shot('values-taps', V);
+  for (let i = 0; i < 3; i++) await tap(V, 150, 720);
+  for (let i = 0; i < 5; i++) await tap(V, 200, 200);
+  await page.waitForTimeout(1300);
+  assert.ok(await page.evaluate(() => document.querySelector('.egg-eaten') && [...document.querySelectorAll('.span[data-art="values"] .egg-new')].some(p => p.getAttribute('d').startsWith('M215 52'))), `${name}: sandwich and donation-box secrets`);
+  await shot('values-secrets', V);
+
+  // Portrait: a tap blinks, the tie swings, the pocket square peeks out, and the seventh face tap adds a flower.
+  await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
+  await page.waitForTimeout(500);
+  await tap(M, 600, 520);
+  assert.ok(await page.evaluate(() => document.querySelector('.egg-lids').getAnimations().length === 1), `${name}: blink`);
+  await shot('portrait-blink', '.mark');
+  await page.waitForTimeout(300);
+  await tap(M, 600, 1000);
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.egg-copy')).display), animated ? 'inline' : 'none', `${name}: tie swings (still with reduced motion)`);
+  await page.waitForTimeout(1600);
+  await tap(M, 850, 1110);
+  for (let i = 0; i < 6; i++) { await tap(M, 600, 520); await page.waitForTimeout(150); }
+  await page.waitForTimeout(900);
+  assert.ok(await page.locator('.egg-flower').count() === 1 && await page.locator('.egg-square').count() === 1, `${name}: flower secret and pocket square`);
+  await shot('portrait-flower', '.mark');
+  assert.deepEqual(await parts(), [24, 10, 15, 4], `${name}: interactive parts in Building, Experience, Values and the portrait`);
+  // Nothing in a drawing navigates or throws.
+  assert.equal(url(), base, `${name}: playing with the drawings never navigates`);
+  assert.deepEqual(errors, [], `${name}: no page errors`);
+  results.push({ eggs: name, status: 'passed' });
+}
 async function railChecks(context, name, pinned, animated) {
   await context.addInitScript(skipIntro);
   const page = await context.newPage();
@@ -507,6 +631,15 @@ try {
     const railContext = await browser.newContext(options);
     await railChecks(railContext, label, pinned, animated);
     await railContext.close();
+  }
+  for (const [label, options, touch, animated] of [
+    ['desktop', { viewport: { width: 1440, height: 1000 } }, false, true],
+    ['phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, true, true],
+    ['reduced-desktop', { viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }, false, false],
+  ]) {
+    const eggContext = await browser.newContext(options);
+    await eggChecks(eggContext, label, touch, animated);
+    await eggContext.close();
   }
   // A reduced-motion preference set after load still shows every section.
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
