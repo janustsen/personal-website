@@ -298,7 +298,7 @@ function values(svg, part) {
   touch(stack, { tap: () => swing(stack, [500, 860], -4, 1100), hover: () => swing(stack, [500, 860], -2, 1100) });
   // 8. Tap the sandwich: it lifts twice, and on the third tap it is eaten (crumbs left behind) and comes back a little later.
   const sandwich = part([55, 655, 260, 768], { skip: [116, 119] });
-  touch(sandwich, { tap: counter(3, () => lift(sandwich, -6), () => {
+  touch(sandwich, { tap: counter(3, () => sandwich.classList.contains('egg-eaten') || lift(sandwich, -6), () => {
     if (sandwich.classList.contains('egg-eaten')) return;
     sandwich.classList.add('egg-eaten');
     const crumbs = document.createElementNS(NS, 'g');
@@ -381,10 +381,8 @@ function portrait(svg) {
       drawIn(ink(f, 'M823 880Q826 892 822 904', 4), 300, 0);
     }
   } });
-  if (!still.matches) {
-    const idle = () => after(5000 + Math.random() * 5000, () => { if (!document.hidden) blink(); idle(); });
-    idle();
-  }
+  const idle = () => after(5000 + Math.random() * 5000, () => { if (!document.hidden && !still.matches) blink(); idle(); });
+  idle();
   // 4. Tap the tie and it swings a little crooked, then straightens. 5. Drag it sideways and it straightens when let go.
   const [tieCopy, tieMove] = copy(tiePoly, 'egg-tie-clip');
   tieCopy.style.display = 'none';
