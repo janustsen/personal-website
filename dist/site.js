@@ -230,7 +230,7 @@ if (toys) {
   }, true);
 
   // Scene objects that react to a hover or a tap: the die rolls and a pawn hops a square, the needle stitches, the clipper spins.
-  const still = !motion;
+  const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const pip = ([x, y]) => `<circle cx="${531.5 + x * 2.6}" cy="${471 + y * 2.6}" r="1"/>`;
   const faces = [[[0, 0]], [[-1, -1], [1, 1]], [[-1, -1], [0, 0], [1, 1]], [[-1, -1], [1, -1], [-1, 1], [1, 1]], [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]]];
   const hop = pawn => {
@@ -238,7 +238,7 @@ if (toys) {
     const [ax, ay] = track[from].split(',').map(Number), [bx, by] = track[to].split(',').map(Number);
     pawn.dataset.at = to;
     pawn.style.translate = `${bx}px ${by}px`;
-    if (!still) pawn.animate([{ translate: `${ax}px ${ay}px` }, { translate: `${(ax + bx) / 2}px ${Math.min(ay, by) - 9}px`, offset: 0.5 }, { translate: `${bx}px ${by}px` }], { duration: 480, easing: 'ease-in-out' });
+    if (!still()) pawn.animate([{ translate: `${ax}px ${ay}px` }, { translate: `${(ax + bx) / 2}px ${Math.min(ay, by) - 9}px`, offset: 0.5 }, { translate: `${bx}px ${by}px` }], { duration: 480, easing: 'ease-in-out' });
   };
   const poke = btn => {
     const toy = btn.dataset.toy;
@@ -263,6 +263,8 @@ if (toys) {
     if (btn?.dataset.toy === 'climb' && bump(btn) >= 3) btn.classList.add('found');
     if (btn?.dataset.toy === 'price') { btn.querySelector('.price').textContent = ['$3', '$2', '$1', 'free'][Math.min(bump(btn), 3)]; replay(btn, 'play'); }
   });
+  // Phones swipe across the room; it opens on the middle.
+  toys.scrollLeft = (toys.scrollWidth - toys.clientWidth) / 2;
   // The wall clock keeps the visitor's own time.
   const tick = () => { const d = new Date(), m = d.getMinutes();
     toys.querySelector('.clock-m').style.rotate = `${m * 6}deg`; toys.querySelector('.clock-h').style.rotate = `${(d.getHours() % 12) * 30 + m / 2}deg`; };
