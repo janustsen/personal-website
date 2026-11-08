@@ -6,7 +6,7 @@ const base = process.env.SITE_URL || 'http://127.0.0.1:63027/';
 const evidence = process.env.EVIDENCE_DIR || 'work/verification';
 await mkdir(evidence, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : chromium.executablePath()), headless: true });
-const heldBack = ['V1', 'V3', 'V5', 'B1'];
+const heldBack = ['B1'];
 const results = [];
 // The first-visit intro plays once per tab session; the page checks below start from the settled page.
 const skipIntro = () => { try { sessionStorage.setItem('intro', '1'); } catch {} };
@@ -14,7 +14,7 @@ const skipIntro = () => { try { sessionStorage.setItem('intro', '1'); } catch {}
 async function portraitOnly(page) {
   assert.deepEqual(await page.locator('img').evaluateAll(imgs => imgs.filter(img =>
     !(img.matches('.mark > img, .intro-face > img') && /\/assets\/drawings\/portrait\.svg$/.test(new URL(img.currentSrc || img.src).pathname)) &&
-    !(img.matches('.art > img') && /\/assets\/drawings\/(building|experience|strategy|values|tech-ai|design|books)\.svg$/.test(new URL(img.currentSrc || img.src).pathname))
+    !(img.matches('.art > img') && /\/assets\/drawings\/(building|experience|values)\.svg$/.test(new URL(img.currentSrc || img.src).pathname))
   ).map(img => img.getAttribute('src'))), [], 'Only line drawings appear on the page; no profile photo');
   assert.equal(await page.locator('#about img, #about svg, #about figure, #about picture, #about video, #about canvas').count(), 0, 'About is text only');
   assert.equal(await page.locator('.bar img, .bar svg, .bar picture').count(), 0, 'Header bar has no avatar or portrait');
@@ -27,6 +27,7 @@ function recordPortrait(selector) {
     if (el?.querySelector('path')) {
       const sample = { p: parseFloat(getComputedStyle(el).getPropertyValue('--p')), scroll: scrollY,
         offsets: [...el.querySelectorAll('path')].map(path => parseFloat(getComputedStyle(path).strokeDashoffset.replace(/^calc\(/, ''))),
+        face: parseFloat(getComputedStyle(el.querySelector('polygon')).opacity),
         running: el.getAnimations().some(a => a.playState === 'running') };
       if (!samples.length && sample.p > 0.08 && sample.p < 0.8) samples.push(sample);
       else if (samples.length && sample.p > samples[0].p + 0.1) { samples.push(sample); return; }
@@ -47,6 +48,8 @@ async function mastheadChecks(page, name, animated, js) {
       const [start, progressed] = await page.evaluate(() => window.portraitSamples);
       assert.ok(start.running && start.scroll === 0 && start.offsets.some(v => v < 1) && start.offsets.some(v => v > 0), `${name}: strokes draw on load without scrolling (${JSON.stringify(start)})`);
       assert.ok(progressed.p > start.p + 0.1 && progressed.scroll === 0, `${name}: strokes progress without scrolling`);
+      // Every stroke draws at once (no face first, then hair and suit): all strokes are at the same stage.
+      assert.ok(Math.max(...start.offsets) - Math.min(...start.offsets) < 0.001 && start.face > 0 && start.face < 1, `${name}: the whole portrait draws in together (${JSON.stringify({ ...start, offsets: [Math.min(...start.offsets), Math.max(...start.offsets)] })})`);
       await writeFile(join(evidence, `${name}-portrait-progress.json`), JSON.stringify([start, progressed], null, 2));
     } else {
       assert.ok(await page.locator('.mark').evaluate(m => !m.getAnimations().some(a => a.playState === 'running') &&
@@ -156,22 +159,22 @@ async function railChecks(context, name, pinned, animated) {
   const bar = page.locator('.bar');
   assert.equal(await bar.evaluate(el => el.classList.contains('on')), false, 'Bar hidden while the header shows');
   await page.screenshot({ path: join(evidence, `rails-${name}-bar-hidden.png`) });
-  const span = page.locator('.span[data-art="strategy"]');
+  const span = page.locator('.span[data-art="experience"]');
   const fig = span.locator('.art');
   await span.scrollIntoViewIfNeeded();
-  await page.waitForFunction(() => document.querySelector('.span[data-art="strategy"] .art svg'));
+  await page.waitForFunction(() => document.querySelector('.span[data-art="experience"] .art svg'));
   const at = async t => {
-    await page.evaluate(t => { const s = document.querySelector('.span[data-art="strategy"]'); const f = s.querySelector('.art');
+    await page.evaluate(t => { const s = document.querySelector('.span[data-art="experience"]'); const f = s.querySelector('.art');
       const pin = parseFloat(getComputedStyle(f).top) || 0; scrollTo(0, scrollY + s.getBoundingClientRect().top - pin + t * (s.offsetHeight - f.offsetHeight)); }, t);
     await page.waitForTimeout(250);
     await page.screenshot({ path: join(evidence, `rails-${name}-pin-${t}.png`) });
-    return page.evaluate(() => { const f = document.querySelector('.span[data-art="strategy"] .art'); const l = document.querySelector('#strategy-label');
+    return page.evaluate(() => { const f = document.querySelector('.span[data-art="experience"] .art'); const l = document.querySelector('#experience-label');
       return { top: f.getBoundingClientRect().top, label: l.getBoundingClientRect().top, pin: parseFloat(getComputedStyle(f).top), position: getComputedStyle(f).position,
         p: f.classList.contains('drawing') ? parseFloat(getComputedStyle(f).getPropertyValue('--p')) : 1, drawing: f.classList.contains('drawing'), bar: document.querySelector('.bar').classList.contains('on'),
         barBottom: document.querySelector('.bar').getBoundingClientRect().bottom, current: document.querySelector('.bar [aria-current]')?.textContent }; });
   };
   const a = await at(0.1), b = await at(0.6), c = await at(1.4);
-  assert.ok(a.bar && a.current === 'Thinking', `${name}: bar shows and marks Thinking (${JSON.stringify(a)})`);
+  assert.ok(a.bar && a.current === 'Experience', `${name}: bar shows and marks Experience (${JSON.stringify(a)})`);
   if (!pinned) {
     assert.equal(a.position, 'static', 'Phone: no pinned rails');
   } else {
@@ -185,11 +188,11 @@ async function railChecks(context, name, pinned, animated) {
     // Draw-in happens while the section is on screen: it starts as the section (phones: the drawing) enters,
     // is partly drawn with entries readable beside it, and is complete while the section's text is still visible.
     const place = frac => page.evaluate(([frac, wide]) => {
-      const s = document.querySelector('.span[data-art="strategy"]'), f = s.querySelector('.art');
+      const s = document.querySelector('.span[data-art="experience"]'), f = s.querySelector('.art');
       const el = wide ? s : f; scrollTo(0, scrollY + el.getBoundingClientRect().top - frac * innerHeight);
     }, [frac, pinned]);
     const read = () => page.evaluate(() => {
-      const s = document.querySelector('.span[data-art="strategy"]'), f = s.querySelector('.art');
+      const s = document.querySelector('.span[data-art="experience"]'), f = s.querySelector('.art');
       const visibleText = [...s.querySelectorAll('.entries p')].filter(el => { const r = el.getBoundingClientRect(); return r.bottom > 60 && r.top < innerHeight; }).length;
       return { p: parseFloat(getComputedStyle(f).getPropertyValue('--p')), visibleText, artTop: f.getBoundingClientRect().top, artBottom: f.getBoundingClientRect().bottom };
     });
@@ -265,7 +268,16 @@ try {
     assert.ok(await page.evaluate(() => document.fonts.check('17px "Hedvig Letters Serif"') && document.fonts.check('italic 17px "Crimson Pro"') && document.fonts.check('28px "Unica One"')), 'Site fonts load');
     assert.equal(await page.getByRole('link', { name: 'GitHub', exact: true }).first().getAttribute('href'), 'https://github.com/janustsen');
     assert.equal(await page.getByRole('link', { name: 'Email', exact: true }).first().getAttribute('href'), 'mailto:janustsen@outlook.com');
-    for (const id of ['building', 'experience', 'strategy', 'ai', 'values', 'design', 'books', 'interests', 'about']) assert.equal(await page.locator(`#${id} h2.label`).count(), 1, `${id} has a section label`);
+    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.id)), ['about', 'building', 'experience', 'values', 'books', 'interests'], 'Sections in order; Strategy, Tech & AI and Design are gone');
+    for (const id of ['about', 'building', 'experience', 'values', 'books', 'interests']) assert.equal(await page.locator(`#${id} h2.label`).count(), 1, `${id} has a section label`);
+    assert.equal(await page.locator('a[href="#strategy"], a[href="#ai"], a[href="#design"]').count(), 0, 'No links to removed sections');
+    // Resume sits in the contact row (and the bar and footer rows) and serves a PDF.
+    assert.deepEqual(await page.locator('.contact a').allTextContents(), ['Email', 'LinkedIn', 'GitHub', 'X', 'Resume']);
+    for (const row of ['.contact', '.bar-social', '.footer-links']) assert.equal(await page.locator(`${row} a`, { hasText: 'Resume' }).getAttribute('href'), '/assets/janus-tsen-resume.pdf', `${row} links the resume`);
+    const resume = await page.request.get(new URL('assets/janus-tsen-resume.pdf', base).href);
+    assert.ok(resume.ok() && resume.headers()['content-type'] === 'application/pdf', 'Resume PDF is served');
+    // About runs the full width of the content column.
+    assert.ok(await page.locator('#about').evaluate(s => Math.abs(s.querySelector('.opening').getBoundingClientRect().right - s.querySelector('.items').getBoundingClientRect().right) < 2), 'About spans the page');
     assert.ok(await noOverflow(page), `${name}: no horizontal overflow at load`);
     await page.screenshot({ path: join(evidence, `${name}-home-top.png`) });
 
@@ -303,7 +315,7 @@ try {
     assert.ok(mark.src && mark.alt === 'Line drawing of Janus Tsen' && (name === 'no-js' || (mark.svg && mark.p === 1 && mark.drawing === animated)), `Masthead mark is the line portrait, drawn in ${animated ? 'on load' : 'whole'} (${JSON.stringify(mark)})`);
     // Every span's drawing is on the page: inline SVG strokes with JavaScript, the image file without it.
     await page.waitForFunction(js => [...document.querySelectorAll('.art')].every(fig => js ? fig.querySelectorAll('svg path').length > 0 : fig.querySelector('img').complete && fig.querySelector('img').naturalWidth > 0), name !== 'no-js');
-    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [0, 1, 1, 1, 1, 1, 1, 1, 0], 'Exactly one drawing per section, none beside About (text only) or Other interests');
+    assert.deepEqual(await page.locator('main > section').evaluateAll(secs => secs.map(sec => sec.querySelectorAll('.art').length)), [0, 1, 1, 1, 0, 0], 'One drawing each for Building, Experience and Values; none beside About, Books or Other interests');
     await page.waitForFunction(() => { const path = [...document.querySelectorAll('.art')].pop().querySelector('svg path:last-of-type');
       return !path || parseFloat(getComputedStyle(path).strokeDashoffset) === 0; }, null, { timeout: 6000 });
     assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Links carry no arrow glyphs');
@@ -330,6 +342,25 @@ try {
     }
     await page.keyboard.press('Tab');
     assert.ok(await page.evaluate(() => ['A', 'SUMMARY'].includes(document.activeElement.tagName)));
+
+    // Books: spines on a drawn shelf (the held-back one hidden); a spine opens a native popover with a line-drawn cover and its note.
+    assert.equal(await page.locator('.spine:visible').count(), 28, 'Eight read books and the 20 Bookshelf suggestions are on the shelf');
+    assert.equal(await page.locator('#books img, #books .art').count(), 0, 'Books has no side drawing');
+    await page.evaluate(() => document.getElementById('books').scrollIntoView({ behavior: 'instant' }));
+    await page.waitForTimeout(900);
+    await page.screenshot({ path: join(evidence, `${name}-books-shelf.png`) });
+    for (const id of ['bge', 'strategy']) {
+      const spine = page.locator(`[popovertarget="book-${id}"].spine`);
+      await spine.click();
+      const pop = page.locator(`#book-${id}`);
+      assert.ok(await pop.evaluate(el => el.matches(':popover-open')), `${id}: spine opens its book`);
+      assert.ok(await pop.locator('.cover').isVisible() && (await pop.locator('.cover-title').textContent()) === (await spine.textContent()), `${id}: cover drawing shows the title`);
+      assert.ok(await pop.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight; }), `${id}: book fits the screen`);
+      await page.waitForTimeout(800);
+      await page.screenshot({ path: join(evidence, `${name}-book-${id}.png`) });
+      if (id === 'bge') await page.keyboard.press('Escape'); else await pop.locator('.book-close').click();
+      assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, `${id}: book closes`);
+    }
 
     // Old page URLs land on their home sections.
     for (const id of ['building', 'experience', 'about']) {
@@ -433,7 +464,7 @@ try {
   assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0);
   await context.close();
   results.push({ preferenceChange: 'reduced motion reveals everything', status: 'passed' });
-  // Every width: no sideways overflow or clipped header links, a large portrait set left with the name beside it (below it on phones), the bar fits, and Other interests holds its three entries.
+  // Every width: no sideways overflow or clipped header links, the header group centered with the text left and the portrait right, the bar fits, and Other interests lists the hobbies.
   for (const width of [360, 390, 620, 768, 820, 1024, 1180, 1240, 1440, 1920]) {
     const mobile = width < 700;
     const sized = await browser.newContext({ viewport: { width, height: 900 }, isMobile: mobile, hasTouch: mobile });
@@ -443,19 +474,19 @@ try {
     const r = await page.evaluate(() => {
       const mark = document.querySelector('.mark').getBoundingClientRect(), W = innerWidth;
       const outside = [...document.querySelectorAll('.masthead a, main h2, main h3, main p')].filter(el => { const b = el.getBoundingClientRect(); return b.width && (b.left < -1 || b.right > W + 1); }).length;
-      const name = document.querySelector('.identity h1 a').getBoundingClientRect(), page = document.querySelector('.page').getBoundingClientRect();
+      const name = document.querySelector('.identity h1 a').getBoundingClientRect(), page = document.querySelector('.page').getBoundingClientRect(), who = document.querySelector('.who').getBoundingClientRect();
       const jump = document.querySelector('.jump');
       return { wide: document.documentElement.scrollWidth - W, outside, jumpScrolls: jump.scrollWidth > jump.clientWidth && getComputedStyle(jump).overflowX === 'auto' || jump.scrollWidth <= jump.clientWidth,
-        mark: Math.round(mark.width), markLeft: Math.round(mark.left - page.left), stacked: name.top >= mark.bottom, beside: name.left > mark.right && name.top < mark.bottom, interests: [...document.querySelectorAll('#interests h3')].map(h => h.textContent),
+        mark: Math.round(mark.width), centered: Math.round(Math.abs((who.left - page.left) - (page.right - mark.right))), right: mark.left >= who.right - 1 && mark.left > name.right, interests: [...document.querySelectorAll('#interests h3')].map(h => h.textContent),
         aboutEntries: document.querySelectorAll('#about article').length };
     });
     await page.evaluate(() => scrollTo(0, 2000));
     await page.waitForTimeout(450);
     const barFits = await page.evaluate(() => { const bar = document.querySelector('.bar'); return [...bar.children].every(el => getComputedStyle(el).display === 'none' || el.getBoundingClientRect().right <= innerWidth + 1); });
     assert.ok(r.wide <= 0 && r.outside === 0 && r.jumpScrolls, `${width}px: no sideways overflow or clipped text (${JSON.stringify(r)})`);
-    assert.ok(r.mark >= 96 && Math.abs(r.markLeft) < 2 && (width <= 560 ? r.stacked : r.beside), `${width}px: header portrait is large and set left, the name ${width <= 560 ? 'below' : 'beside'} it (${JSON.stringify(r)})`);
+    assert.ok(r.mark >= 80 && r.centered < 2 && r.right, `${width}px: header group is centered, text left and portrait right (${JSON.stringify(r)})`);
     assert.ok(barFits, `${width}px: header bar fits the screen`);
-    assert.deepEqual(r.interests, ['Writing & ideas', 'Homer Humanities', 'Karate'], `${width}px: Other interests holds its three entries`);
+    assert.deepEqual(r.interests, ['Karate', 'Climbing', 'Running', 'Sewing', 'Fashion', 'Thrifting', 'Cutting hair', 'Board game design'], `${width}px: Other interests lists the hobbies`);
     assert.equal(r.aboutEntries, 0, `${width}px: those entries are no longer under About`);
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: join(evidence, `width-${width}-top.png`) });
