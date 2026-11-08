@@ -208,7 +208,7 @@ if (toys) {
   // Drag to swing (the belt, the climbing shoes, a book spine) or slide (the running shoe). Let go and it settles back.
   let drag = null;
   addEventListener('pointerdown', e => {
-    const host = e.target.closest?.('.hobby, .spine');
+    const host = e.target.closest?.('.hobby, .spine:not(.lean, .lean-right, .flat, .face)');
     const part = host?.matches('.spine') ? host : host?.querySelector('.swing, .slide');
     if (part) drag = { host, part, x: e.clientX, moved: false, slide: part.matches('.slide'), k: host.matches('.spine') ? 0.25 : -0.35, max: host.matches('.spine') ? 12 : 24 };
   });
