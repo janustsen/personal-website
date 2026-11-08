@@ -1,8 +1,8 @@
 # Pinned rails, drawings and header bar
 
 ## Sub-features
-- Spans: each section except About and Other interests is one `.span` that pairs all of its entries with a single line drawing (`/assets/drawings/<slug>.svg`, 800×1000).
-  - The seven section drawings are building, experience, strategy, values, tech-ai, design and books. Janus's line portrait is the masthead mark instead (see [navigation.md](navigation.md)).
+- Spans: each section except About, Books and Other interests is one `.span` that pairs all of its entries with a single line drawing (`/assets/drawings/<slug>.svg`, 800×1000).
+  - The three section drawings are building, experience and values. Janus's line portrait is the masthead mark instead (see [navigation.md](navigation.md)).
   - Each span is as tall as its text (or its drawing, if that is taller). A drawing stays pinned only while its section's text is beside it, then hands off to the next one. It never sits beside an empty column.
 - Rails (wider than 760px): the section label and the drawing are `position: sticky` just below the bar. They stay pinned while the entries scroll and release when the span ends.
 - Draw-in: `site.js` swaps each image for its inline SVG and gives every stroke `pathLength=1` and a start point `--d`, in file order.
@@ -14,11 +14,12 @@
   - It marks the current section with `aria-current`.
   - It switches without animation under reduced motion.
 
-- About opens the page: it holds the intro (Stanford, Verdnt, DRW) and the About text only, with no drawing; the text uses up to 38rem. The nav lists About first.
-- Other interests closes the page (Writing & ideas, Homer Humanities, Karate). It has a label but no drawing; its entries sit in the text column.
+- About opens the page: it holds the intro (Stanford, Verdnt, DRW) and the About text only, with no drawing; the text runs the full width of the content column. The nav lists About first.
+- Books holds a drawn bookcase instead of a drawing: spines on shelves, each opening a native popover (`popovertarget`, works without JavaScript) with a line-drawn cover and a note. The read shelf has the homepage books; the second shelf has the 20 Bookshelf suggestions.
+- Other interests closes the page with Janus's hobbies (Karate, Climbing, Running, Sewing, Fashion, Thrifting, Cutting hair, Board game design). It has a label but no drawing; its entries sit in the text column.
 
 ## User path and drive
-Scroll a span slowly on desktop and tablet. The label and drawing hold their place while the text moves, the drawing fills in, and both let go at the next span. On a phone the drawing sits after the first entry and scrubs with scroll, including backwards. `node verify.mjs` runs `railChecks` at desktop, tablet, phone and reduced-motion desktop on the Strategy span. It also samples draw progress as the section enters and moves up the screen. Those samples must show nothing drawn before the section enters, a start as soon as it does, progress that follows the scroll, text on screen beside a partly drawn image, and completion while the section is still visible. On desktop and tablet it then scrolls every span past its end and checks that the section's last visible block is still below the bar whenever the drawing is pinned, and that the drawing is complete when it releases. The drive also checks that all drawings finish drawn. Read `rails-*-pin-*.png` for the held and released positions, `rails-*-draw-*.png` for scroll progress, and `rails-*-bar-*.png` for the bar returning to the masthead.
+Scroll a span slowly on desktop and tablet. The label and drawing hold their place while the text moves, the drawing fills in, and both let go at the next span. On a phone the drawing sits after the first entry and scrubs with scroll, including backwards. `node verify.mjs` runs `railChecks` at desktop, tablet, phone and reduced-motion desktop on the Experience span. It also samples draw progress as the section enters and moves up the screen. Those samples must show nothing drawn before the section enters, a start as soon as it does, progress that follows the scroll, text on screen beside a partly drawn image, and completion while the section is still visible. On desktop and tablet it then scrolls every span past its end and checks that the section's last visible block is still below the bar whenever the drawing is pinned, and that the drawing is complete when it releases. The drive also checks that all drawings finish drawn. Read `rails-*-pin-*.png` for the held and released positions, `rails-*-draw-*.png` for scroll progress, and `rails-*-bar-*.png` for the bar returning to the masthead.
 
 ## Limits
 Emulated touch does not prove physical-device scroll smoothness.
