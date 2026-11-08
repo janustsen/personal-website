@@ -267,7 +267,7 @@ if (toys) {
   // Phones swipe across the room: it opens on the middle, each edge fades only while it hides more, and the hint shows only while it overflows.
   const edges = () => {
     const more = toys.scrollWidth - toys.clientWidth;
-    toys.classList.toggle('pans', more > 1);
+    toys.classList.toggle('fits', more <= 1);
     toys.style.setProperty('--fade-l', toys.scrollLeft > 1 ? '28px' : '0px');
     toys.style.setProperty('--fade-r', toys.scrollLeft < more - 1 ? '28px' : '0px');
   };

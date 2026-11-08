@@ -533,7 +533,7 @@ try {
     // Phones swipe across the room (it opens on the middle, with a hint); wider screens show it whole.
     const phone = options.viewport.width <= 560, scripted = name !== 'no-js';
     const pan = await page.locator('.scene').evaluate(el => ({ pans: el.scrollWidth > el.clientWidth + 1, hint: getComputedStyle(document.querySelector('.scene-hint')).display !== 'none' }));
-    assert.deepEqual(pan, { pans: phone, hint: phone && scripted }, `${name}: the room pans only on phones, with a hint while it overflows`);
+    assert.deepEqual(pan, { pans: phone, hint: phone }, `${name}: the room pans only on phones, with a swipe hint (also without JavaScript)`);
     if (phone && scripted) {
       // Each edge fades only while it hides more of the room.
       const fades = () => page.locator('.scene').evaluate(el => [el.style.getPropertyValue('--fade-l'), el.style.getPropertyValue('--fade-r')]);
