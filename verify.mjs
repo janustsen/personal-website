@@ -474,17 +474,62 @@ try {
     await page.evaluate(() => document.getElementById('books').scrollIntoView({ behavior: 'instant' }));
     await page.waitForTimeout(900);
     await page.screenshot({ path: join(evidence, `${name}-books-shelf.png`) });
-    for (const id of ['bge', 'strategy']) {
+    // A lived-in shelf: books leaning on a neighbour, two flat stacks, a bookend and drawn props.
+    const shelves = await page.locator('.shelf-row').evaluateAll(rows => rows.map(row => ({ stack: row.querySelectorAll('.stack .spine.flat').length, lean: row.querySelectorAll('.spine.lean, .spine.lean-right').length, face: row.querySelectorAll('.spine.face').length })));
+    assert.ok(shelves.length === 3 && shelves.every(s => s.stack >= 2 && s.stack <= 4 && s.lean >= 1 && s.face >= 1) && await page.locator('.bookend').count() === 1, `Every shelf has a flat stack, a leaning book and a face-out book (${JSON.stringify(shelves)})`);
+    // Every book: the spine opens its popover; with motion the cover spins out of the shelf (rotateY) into place and its own
+    // line illustration draws in; reduced motion fades. Each cover has a click-to-play part; Escape or Close closes it.
+    const ids = await page.locator('.spine:visible').evaluateAll(els => els.map(el => el.getAttribute('popovertarget').slice(5)));
+    assert.equal(ids.length, 28);
+    for (const [i, id] of ids.entries()) {
       const spine = page.locator(`[popovertarget="book-${id}"].spine`);
       await spine.click();
       const pop = page.locator(`#book-${id}`);
       assert.ok(await pop.evaluate(el => el.matches(':popover-open')), `${id}: spine opens its book`);
+      const motionState = await pop.evaluate(el => ({ ink: el.querySelector('.cover-art path') && getComputedStyle(el.querySelector('.cover-art path')).animationName, paths: el.querySelectorAll('.cover-art path').length }));
+      assert.ok(motionState.paths >= 1, `${id}: cover has its own line illustration`);
+      const spins = () => page.evaluate(id => document.querySelector(`#book-${id} .cover`).getAnimations().some(a => /rotateY\(90deg\)/.test(JSON.stringify(a.effect.getKeyframes()))), id);
+      if (animated) await page.waitForFunction(id => document.querySelector(`#book-${id} .cover`).getAnimations().some(a => /rotateY\(90deg\)/.test(JSON.stringify(a.effect.getKeyframes()))), id, { timeout: 1000 })
+        .catch(() => { throw new Error(`${id}: book never spun into the preview`); });
+      else { await page.waitForTimeout(100); assert.equal(await spins(), false, `${id}: no spin without motion`); }
+      assert.equal(motionState.ink, animated || name === 'no-js' ? 'cover-ink' : 'none', `${id}: illustration draws in only with motion`);
+      await page.waitForTimeout(name === 'reduced' ? 300 : 2000);
       assert.ok(await pop.locator('.cover').isVisible() && (await pop.locator('.cover-title').textContent()) === (await spine.textContent()), `${id}: cover drawing shows the title`);
       assert.ok(await pop.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight; }), `${id}: book fits the screen`);
-      await page.waitForTimeout(800);
+      assert.ok(await pop.locator('.cover-art path').evaluateAll(ps => ps.every(p => parseFloat(getComputedStyle(p).strokeDashoffset || 0) === 0)), `${id}: illustration finishes drawn`);
+      if (name !== 'no-js') {
+        await pop.locator('.cover-art').click();
+        assert.ok(await pop.locator('.cover-art').evaluate(el => el.classList.contains('on') && el.querySelector('.e')), `${id}: cover has a part that plays on click`);
+      }
       await page.screenshot({ path: join(evidence, `${name}-book-${id}.png`) });
-      if (id === 'bge') await page.keyboard.press('Escape'); else await pop.locator('.book-close').click();
+      if (i % 2) await page.keyboard.press('Escape'); else await pop.locator('.book-close').click();
       assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, `${id}: book closes`);
+      if (animated) await page.waitForTimeout(700);
+      assert.equal(await spine.evaluate(el => getComputedStyle(el).visibility), 'visible', `${id}: book returns to the shelf`);
+    }
+    if (name !== 'no-js') {
+      // Shelf easter eggs: dragging a leaning book upright never opens it and it eases back; the mug steams, the glasses flip, the bookend reveals a mouse after five nudges, the spider drops on its thread.
+      const lean = page.locator('.spine.lean').first();
+      await lean.scrollIntoViewIfNeeded();
+      const b = await lean.boundingBox();
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down();
+      await page.mouse.move(b.x + b.width / 2 + 30, b.y + b.height / 2, { steps: 5 });
+      assert.ok(Math.abs(parseFloat(await lean.evaluate(el => getComputedStyle(el).rotate))) < 4, 'Leaning book drags upright');
+      await page.mouse.up();
+      assert.equal(await page.evaluate(() => !!document.querySelector('.book-pop:popover-open')), false, 'Dragging a book does not open it');
+      await page.waitForTimeout(1000);
+      assert.equal(await lean.evaluate(el => getComputedStyle(el).rotate), '-9deg', 'Leaning book eases back');
+      for (let n = 0; n < 5; n++) await page.locator('.bookend').click();
+      await page.locator('.mug').click(); await page.locator('.glasses').click(); await page.locator('.open-book').click();
+      assert.ok(await page.evaluate(() => document.querySelector('.mug.on') && document.querySelector('.glasses.on') && document.querySelector('.bookend.found') && document.querySelector('.open-book.on')), 'Shelf props respond');
+      await page.locator('.spider').scrollIntoViewIfNeeded();
+      await page.evaluate(() => scrollBy(0, -120));
+      const sp = await page.locator('.spider svg').boundingBox();
+      await page.mouse.move(sp.x + 10, sp.y + 8); await page.mouse.down(); await page.mouse.move(sp.x + 10, sp.y + 80, { steps: 5 });
+      assert.ok(parseFloat(await page.locator('.spider').evaluate(el => getComputedStyle(el).getPropertyValue('--drop'))) > 60, 'Spider drops on its thread');
+      await page.mouse.up();
+      await page.waitForTimeout(1100);
+      await page.locator('.bookcase').screenshot({ path: join(evidence, `${name}-books-shelf-played.png`) });
     }
 
     // Other interests: a drawn scene; every object is a real button that opens its hobby card (one at a time, Escape or a click outside closes it).
@@ -574,8 +619,8 @@ try {
     }
 
     // Old page URLs land on their home sections.
-    for (const id of ['building', 'experience', 'about', 'books']) {
-      await page.goto(new URL(`${id}/`, base).href);
+    for (const [path, id] of [['building', 'building'], ['experience', 'experience'], ['about', 'about'], ['bookshelf', 'books']]) {
+      await page.goto(new URL(`${path}/`, base).href);
       await page.waitForURL(`${base}#${id}`);
     }
 

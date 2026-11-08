@@ -1,6 +1,6 @@
 {
   "name": "janus-personal-website",
   "private": true,
-  "scripts": { "stamp": "node stamp.mjs", "test": "node verify.mjs", "lint": "node --check dist/site.js && node --check dist/eggs.js && node --check verify.mjs && node stamp.mjs --check" },
+  "scripts": { "stamp": "node stamp.mjs", "test": "node verify.mjs", "lint": "node --check dist/site.js && node --check dist/books.js && node --check dist/eggs.js && node --check verify.mjs && node stamp.mjs --check" },
   "devDependencies": { "playwright-core": "1.62.1" }
 }
