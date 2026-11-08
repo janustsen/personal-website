@@ -501,10 +501,11 @@ try {
       const hotspot = page.locator(`.hobby[popovertarget="hobby-${id}"]`), pop = page.locator(`#hobby-${id}`);
       assert.equal(await hotspot.getAttribute('type'), 'button');
       assert.equal(await page.getByRole('button', { name: title, exact: true }).evaluate((el, t) => el.getAttribute('popovertarget') === t, `hobby-${id}`), true, `${id}: hotspot is labelled ${title}`);
-      const box = await hotspot.boundingBox();
-      assert.ok(box.width >= 44 && box.height >= 44, `${name}/${id}: hotspot is at least 44px (${Math.round(box.width)}×${Math.round(box.height)})`);
+      const hit = await hotspot.evaluate(el => { const s = getComputedStyle(el, '::after'); return [parseFloat(s.width), parseFloat(s.height)]; });
+      assert.ok(hit[0] >= 44 && hit[1] >= 44, `${name}/${id}: hit area is at least 44px (${hit.map(Math.round).join('×')})`);
       assert.equal(await hotspot.evaluate(el => getComputedStyle(el).cursor), 'pointer');
-      assert.notEqual(await hotspot.evaluate(el => getComputedStyle(el, '::before').content), 'none', `${id}: hotspot carries a highlight dot`);
+      assert.equal(await hotspot.evaluate(el => getComputedStyle(el, '::before').content), 'none', `${id}: no glowing dot marks the object`);
+      assert.equal(await hotspot.locator('.leader').count(), 1, `${id}: label has a leader line`);
       await hotspot.click();
       assert.ok(await pop.evaluate(el => el.matches(':popover-open')), `${name}/${id}: hotspot opens its card`);
       assert.equal(await pop.locator('h3').textContent(), title);
@@ -518,21 +519,54 @@ try {
       // Next hotspot is clicked with this card open: the backdrop click closes it first, so close explicitly to keep the flow simple.
       if (previous) { await pop.locator('.book-close').click(); previous = null; }
     }
-    // Keyboard: Tab reaches a hotspot with a visible focus ring, Enter opens its card.
+    // Phones (no hover) show every label; with a mouse they appear on hover or focus.
+    // (Chrome's emulation can drop its no-hover state after earlier clicks, so a fresh page checks the default labels.)
+    const fresh = await context.newPage();
+    await fresh.goto(new URL('#interests', base).href, { waitUntil: 'networkidle' });
+    const touch = await fresh.evaluate(() => matchMedia('(hover: none)').matches);
+    assert.equal(touch, !!options.hasTouch, `${name}: hover is unavailable exactly on touch screens`);
+    assert.equal(await fresh.locator('.hobby-name').evaluateAll(els => els.every(el => getComputedStyle(el).opacity === '1')), touch, `${name}: labels show by default only without hover`);
+    if (touch) await fresh.locator('#interests .scene').screenshot({ path: join(evidence, `${name}-hobbies-labels.png`) });
+    await fresh.close();
+    if (!touch) {
+      await page.locator('.hobby[popovertarget="hobby-sewing"]').hover();
+      await page.waitForTimeout(500);
+      assert.equal(await page.locator('.hobby[popovertarget="hobby-sewing"] .hobby-name').evaluate(el => getComputedStyle(el).opacity), '1', 'Hover shows the label');
+      await page.locator('#interests .scene').screenshot({ path: join(evidence, `${name}-hobbies-hover.png`) });
+      await page.mouse.move(2, 2);
+    }
+    // Keyboard: Tab reaches a hotspot with a visible focus treatment (label and traced outline), Enter opens its card.
     await page.locator('.hobby[popovertarget="hobby-karate"]').focus();
     await page.keyboard.press('Enter');
     assert.ok(await page.locator('#hobby-karate').evaluate(el => el.matches(':popover-open')), 'Enter opens a hobby card');
     await page.keyboard.press('Escape');
-    assert.notEqual(await page.locator('.hobby[popovertarget="hobby-karate"]').evaluate(el => getComputedStyle(el).outlineStyle), 'none', 'Focused hotspot shows a focus ring');
+    await page.waitForTimeout(450);
+    assert.ok(await page.locator('.hobby[popovertarget="hobby-karate"]').evaluate(el => el.matches(':focus-visible') && getComputedStyle(el.querySelector('.hobby-name')).opacity === '1'), 'Focused hotspot shows its label');
     if (name !== 'no-js') {
-      // Toys: dragging the jeans swings them and does not open the card; the price tag drops each visit; three climbs leave a chalk mark.
-      const jeans = await page.locator('.hobby[popovertarget="hobby-fashion"]').boundingBox();
-      await page.mouse.move(jeans.x + jeans.width / 2, jeans.y + jeans.height * 0.7);
-      await page.mouse.down();
-      await page.mouse.move(jeans.x + jeans.width / 2 + 50, jeans.y + jeans.height * 0.7, { steps: 5 });
-      assert.notEqual(await page.locator('.hobby[popovertarget="hobby-fashion"] .swing').evaluate(el => el.style.rotate), '', 'Dragging the jeans swings them');
-      await page.mouse.up();
-      assert.equal(await page.locator('#hobby-fashion').evaluate(el => el.matches(':popover-open')), false, 'A drag does not open the card');
+      // Toys: dragging the belt swings it and does not open the card; the shoe slides; the needle stitches; a pawn hops;
+      // the price tag drops each visit; three climbs leave a chalk mark; the yarn unrolls; the outlines trace once on arrival.
+      if (name !== 'reduced') assert.ok(await page.locator('.scene').evaluate(el => el.classList.contains('shimmer')), 'Outlines shimmer once when the room shows');
+      assert.equal(await page.locator('.hobby .trace').count() >= 8, true, 'Every object has a tracing outline');
+      const drag = async (sel, part, prop) => {
+        const b = await page.locator(sel).boundingBox();
+        await page.mouse.move(b.x + b.width / 2, b.y + b.height * 0.7);
+        await page.mouse.down();
+        await page.mouse.move(b.x + b.width / 2 + 50, b.y + b.height * 0.7, { steps: 5 });
+        assert.notEqual(await page.locator(`${sel} ${part}`).evaluate((el, p) => el.style[p], prop), '', `Dragging ${sel} moves it`);
+        await page.mouse.up();
+      };
+      await drag('.hobby[popovertarget="hobby-karate"]', '.swing', 'rotate');
+      assert.equal(await page.locator('#hobby-karate').evaluate(el => el.matches(':popover-open')), false, 'A drag does not open the card');
+      await drag('.hobby[popovertarget="hobby-running"]', '.slide', 'translate');
+      assert.equal(await page.locator('#hobby-running').evaluate(el => el.matches(':popover-open')), false, 'A shoe drag does not open the card');
+      const stitches = () => page.locator('.stitch.on').count(), pawn = () => page.locator('.pawn').getAttribute('data-at');
+      const [s0, p0] = [await stitches(), await pawn()];
+      for (const id of ['sewing', 'board-game']) { await page.locator(`.hobby[popovertarget="hobby-${id}"]`).click(); await page.keyboard.press('Escape'); }
+      assert.ok(await stitches() > s0, 'The sewing machine adds a stitch');
+      assert.notEqual(await pawn(), p0, 'A pawn hops a square');
+      const yarn = await page.locator('.yarn').boundingBox();
+      await page.mouse.click(yarn.x + yarn.width * 0.3, yarn.y + yarn.height * 0.6);
+      assert.notEqual(await page.locator('.yarn').evaluate(el => el.style.getPropertyValue('--unroll')), '', 'Tapping the basket unrolls the yarn');
       for (let i = 0; i < 3; i++) { await page.locator('.hobby[popovertarget="hobby-climbing"]').click(); await page.keyboard.press('Escape'); }
       assert.ok(await page.locator('.hobby[popovertarget="hobby-climbing"]').evaluate(el => el.classList.contains('found')), 'Three climbs leave a chalk mark');
       assert.notEqual(await page.locator('.price').textContent(), '$3', 'The thrift price tag drops after a visit');
