@@ -64,7 +64,7 @@ async function mastheadChecks(page, name, animated, js) {
   results.push({ portrait: name, status: 'passed', mode: !js ? 'static SVG image' : animated ? 'strokes progress without scroll' : 'fully drawn, no animation' });
 }
 // First-visit intro: the line portrait (drawing itself in) and greeting alone, then on a scroll, key or swipe (or after about 3 seconds)
-// they spring into the header picture and name while the page fades in. A reload or a deep link lands straight on the page.
+// they glide smoothly into the header picture and name while the page fades in. A reload or a deep link lands straight on the page.
 async function introChecks(name, options, trigger) {
   const context = await browser.newContext(options);
   await context.addInitScript(recordPortrait, '.intro-face');
@@ -113,8 +113,9 @@ async function introChecks(name, options, trigger) {
   if (!still) {
     await page.waitForFunction(() => document.documentElement.classList.contains('intro-out'), null, { timeout: 4000 });
     await page.waitForTimeout(250);
-    // The masthead portrait keeps drawing in, in step with the intro copy that lands on it; nothing else animates.
-    const moving = await page.evaluate(() => [...document.querySelectorAll('.page *')].filter(el => !el.matches('.mark') && el.getAnimations().length).length);
+    // The masthead portrait keeps drawing in, in step with the intro copy that lands on it; nothing else moves into place
+    // (endless decorative loops such as the hotspot dots and the dozing cat are not entrances).
+    const moving = await page.evaluate(() => [...document.querySelectorAll('.page *')].filter(el => !el.matches('.mark') && el.getAnimations().some(a => a.effect.getComputedTiming().iterations !== Infinity)).length);
     assert.equal(moving, 0, `${name}: the page fades in as a whole; no blocks are dealt into place`);
     await page.screenshot({ path: join(evidence, `intro-${name}-2-mid.png`) });
   }
@@ -287,7 +288,7 @@ try {
     assert.equal(await page.locator('main *').evaluateAll(els => els.filter(el => /Draft|for approval/i.test(getComputedStyle(el, '::before').content)).length), 0, 'No draft tags shown');
 
     // Scroll reveal: below-the-fold content waits for the viewport only when motion is welcome.
-    const late = page.locator('main > section').last().locator('.item').last();
+    const late = page.locator('main > section').last().locator('.reveal').last();
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains('js')), animated);
     assert.equal(await late.evaluate(el => getComputedStyle(el).opacity), animated ? '0' : '1');
     assert.equal(await page.locator('.opening').evaluate(el => getComputedStyle(el).opacity), '1', 'Opening About text is visible at once');
@@ -360,6 +361,58 @@ try {
       await page.screenshot({ path: join(evidence, `${name}-book-${id}.png`) });
       if (id === 'bge') await page.keyboard.press('Escape'); else await pop.locator('.book-close').click();
       assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, `${id}: book closes`);
+    }
+
+    // Other interests: a drawn scene; every object is a real button that opens its hobby card (one at a time, Escape or a click outside closes it).
+    const hobbies = { climbing: 'Climbing', karate: 'Karate', 'board-game': 'Board game design', sewing: 'Sewing', running: 'Running', hair: 'Cutting hair', fashion: 'Fashion', thrifting: 'Thrifting' };
+    assert.equal(await page.locator('#interests .hobby').count(), 8, 'Eight hobby objects in the scene');
+    assert.equal(await page.locator('#interests article, #interests .entries').count(), 0, 'Hobbies are no longer a left-aligned list');
+    await page.evaluate(() => document.getElementById('interests').scrollIntoView({ behavior: 'instant' }));
+    await page.waitForTimeout(900);
+    await page.locator('#interests').screenshot({ path: join(evidence, `${name}-hobbies-scene.png`) });
+    const sceneBox = await page.locator('.scene').boundingBox(), itemsBox = await page.locator('#interests .items').boundingBox();
+    assert.ok(Math.abs((sceneBox.x - itemsBox.x) - (itemsBox.x + itemsBox.width - sceneBox.x - sceneBox.width)) < 2, `${name}: hobbies scene is centered`);
+    let previous = null;
+    for (const [id, title] of Object.entries(hobbies)) {
+      const hotspot = page.locator(`.hobby[popovertarget="hobby-${id}"]`), pop = page.locator(`#hobby-${id}`);
+      assert.equal(await hotspot.getAttribute('type'), 'button');
+      assert.equal(await page.getByRole('button', { name: title, exact: true }).evaluate((el, t) => el.getAttribute('popovertarget') === t, `hobby-${id}`), true, `${id}: hotspot is labelled ${title}`);
+      const box = await hotspot.boundingBox();
+      assert.ok(box.width >= 44 && box.height >= 44, `${name}/${id}: hotspot is at least 44px (${Math.round(box.width)}×${Math.round(box.height)})`);
+      assert.equal(await hotspot.evaluate(el => getComputedStyle(el).cursor), 'pointer');
+      assert.notEqual(await hotspot.evaluate(el => getComputedStyle(el, '::before').content), 'none', `${id}: hotspot carries a highlight dot`);
+      await hotspot.click();
+      assert.ok(await pop.evaluate(el => el.matches(':popover-open')), `${name}/${id}: hotspot opens its card`);
+      assert.equal(await pop.locator('h3').textContent(), title);
+      assert.ok(await pop.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && getComputedStyle(el).textAlign === 'center'; }), `${name}/${id}: card fits the screen, centered`);
+      if (previous) assert.equal(await page.locator(`#hobby-${previous}`).evaluate(el => el.matches(':popover-open')), false, `${id}: only one card is open`);
+      await page.waitForTimeout(350);
+      await page.screenshot({ path: join(evidence, `${name}-hobby-${id}.png`) });
+      if (id === 'running') { await page.mouse.click(4, 4); assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, 'A click outside closes the card'); previous = null; }
+      else if (id === 'hair') { await page.keyboard.press('Escape'); assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, 'Escape closes the card'); previous = null; }
+      else previous = id;
+      // Next hotspot is clicked with this card open: the backdrop click closes it first, so close explicitly to keep the flow simple.
+      if (previous) { await pop.locator('.book-close').click(); previous = null; }
+    }
+    // Keyboard: Tab reaches a hotspot with a visible focus ring, Enter opens its card.
+    await page.locator('.hobby[popovertarget="hobby-karate"]').focus();
+    await page.keyboard.press('Enter');
+    assert.ok(await page.locator('#hobby-karate').evaluate(el => el.matches(':popover-open')), 'Enter opens a hobby card');
+    await page.keyboard.press('Escape');
+    assert.notEqual(await page.locator('.hobby[popovertarget="hobby-karate"]').evaluate(el => getComputedStyle(el).outlineStyle), 'none', 'Focused hotspot shows a focus ring');
+    if (name !== 'no-js') {
+      // Toys: dragging the jeans swings them and does not open the card; the price tag drops each visit; three climbs leave a chalk mark.
+      const jeans = await page.locator('.hobby[popovertarget="hobby-fashion"]').boundingBox();
+      await page.mouse.move(jeans.x + jeans.width / 2, jeans.y + jeans.height * 0.7);
+      await page.mouse.down();
+      await page.mouse.move(jeans.x + jeans.width / 2 + 50, jeans.y + jeans.height * 0.7, { steps: 5 });
+      assert.notEqual(await page.locator('.hobby[popovertarget="hobby-fashion"] .swing').evaluate(el => el.style.rotate), '', 'Dragging the jeans swings them');
+      await page.mouse.up();
+      assert.equal(await page.locator('#hobby-fashion').evaluate(el => el.matches(':popover-open')), false, 'A drag does not open the card');
+      for (let i = 0; i < 3; i++) { await page.locator('.hobby[popovertarget="hobby-climbing"]').click(); await page.keyboard.press('Escape'); }
+      assert.ok(await page.locator('.hobby[popovertarget="hobby-climbing"]').evaluate(el => el.classList.contains('found')), 'Three climbs leave a chalk mark');
+      assert.notEqual(await page.locator('.price').textContent(), '$3', 'The thrift price tag drops after a visit');
+      assert.match(await page.locator('.clock-m').evaluate(el => el.style.rotate), /deg$/, 'The wall clock is set to the visitor’s time');
     }
 
     // Old page URLs land on their home sections.
@@ -464,7 +517,7 @@ try {
   assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0);
   await context.close();
   results.push({ preferenceChange: 'reduced motion reveals everything', status: 'passed' });
-  // Every width: no sideways overflow or clipped header links, the header group centered with the text left and the portrait right, the bar fits, and Other interests lists the hobbies.
+  // Every width: no sideways overflow or clipped header links, the header group centered with the portrait left and the text right (phones: portrait above, centered), the bar fits, and Other interests lists the hobbies.
   for (const width of [360, 390, 620, 768, 820, 1024, 1180, 1240, 1440, 1920]) {
     const mobile = width < 700;
     const sized = await browser.newContext({ viewport: { width, height: 900 }, isMobile: mobile, hasTouch: mobile });
@@ -477,14 +530,14 @@ try {
       const name = document.querySelector('.identity h1 a').getBoundingClientRect(), page = document.querySelector('.page').getBoundingClientRect(), who = document.querySelector('.who').getBoundingClientRect();
       const jump = document.querySelector('.jump');
       return { wide: document.documentElement.scrollWidth - W, outside, jumpScrolls: jump.scrollWidth > jump.clientWidth && getComputedStyle(jump).overflowX === 'auto' || jump.scrollWidth <= jump.clientWidth,
-        mark: Math.round(mark.width), centered: Math.round(Math.abs((who.left - page.left) - (page.right - mark.right))), right: mark.left >= who.right - 1 && mark.left > name.right, interests: [...document.querySelectorAll('#interests h3')].map(h => h.textContent),
+        mark: Math.round(mark.width), centered: W <= 560 ? Math.round(Math.abs((mark.left + mark.right) / 2 - (page.left + page.right) / 2)) : Math.round(Math.abs((mark.left - page.left) - (page.right - who.right))), right: W <= 560 ? mark.bottom <= who.top + 1 : mark.right <= who.left + 1 && mark.right < name.left, interests: [...document.querySelectorAll('#interests h3')].map(h => h.textContent),
         aboutEntries: document.querySelectorAll('#about article').length };
     });
     await page.evaluate(() => scrollTo(0, 2000));
     await page.waitForTimeout(450);
     const barFits = await page.evaluate(() => { const bar = document.querySelector('.bar'); return [...bar.children].every(el => getComputedStyle(el).display === 'none' || el.getBoundingClientRect().right <= innerWidth + 1); });
     assert.ok(r.wide <= 0 && r.outside === 0 && r.jumpScrolls, `${width}px: no sideways overflow or clipped text (${JSON.stringify(r)})`);
-    assert.ok(r.mark >= 80 && r.centered < 2 && r.right, `${width}px: header group is centered, text left and portrait right (${JSON.stringify(r)})`);
+    assert.ok(r.mark >= 80 && r.centered < 2 && r.right, `${width}px: header group is centered, portrait left (phones: above) and text right (${JSON.stringify(r)})`);
     assert.ok(barFits, `${width}px: header bar fits the screen`);
     assert.deepEqual(r.interests, ['Karate', 'Climbing', 'Running', 'Sewing', 'Fashion', 'Thrifting', 'Cutting hair', 'Board game design'], `${width}px: Other interests lists the hobbies`);
     assert.equal(r.aboutEntries, 0, `${width}px: those entries are no longer under About`);

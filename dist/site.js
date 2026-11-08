@@ -121,7 +121,7 @@ request();
 
 // First-visit intro. The head script in index.html adds .intro-on once per tab session, only with JavaScript,
 // working sessionStorage and no deep link. The line portrait draws itself in and "Hey, I'm Janus!" rises in, alone on the screen.
-// The first scroll, swipe, key or tap (or 3 seconds without one) whips them into the header as the page fades in.
+// The first scroll, swipe, key or tap (or 3 seconds without one) glides them smoothly into the header as the page fades in.
 // Reduced motion keeps both still and swaps to the page with a short fade.
 const root = document.documentElement;
 if (root.classList.contains('intro-on')) {
@@ -129,11 +129,8 @@ if (root.classList.contains('intro-on')) {
 }
 function intro() {
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const curve = f => CSS.supports('animation-timing-function', 'linear(0, 1)')
-    ? `linear(${Array.from({ length: 49 }, (_, i) => +f(i / 48).toFixed(4)).join()})` : 'cubic-bezier(.34,1.56,.64,1)';
-  const back = curve(t => 1 + 2.9 * (t - 1) ** 3 + 1.9 * (t - 1) ** 2);
-  const spring = curve(t => 1 - Math.exp(-6 * t) * Math.cos(t * Math.PI * 2.6));
-  const out = 'cubic-bezier(.33,1,.68,1)', inout = 'cubic-bezier(.65,0,.35,1)';
+  // Smooth ease-out everywhere: no spring, bounce or overshoot.
+  const smooth = 'cubic-bezier(.22,1,.36,1)', out = 'cubic-bezier(.33,1,.68,1)';
 
   const stage = document.createElement('div');
   stage.className = 'intro-stage';
@@ -151,7 +148,7 @@ function intro() {
   if (!still) {
     [...hi.children].forEach((letter, i) => {
       const timing = { duration: 450, delay: 350 + i * 40, fill: 'backwards' };
-      letter.animate([{ translate: '0 46px', opacity: 0 }, { opacity: 1, offset: 0.4 }, { translate: '0 0', opacity: 1 }], { ...timing, easing: back });
+      letter.animate([{ translate: '0 46px', opacity: 0 }, { opacity: 1, offset: 0.4 }, { translate: '0 0', opacity: 1 }], { ...timing, easing: smooth });
       letter.animate([{ rotate: '-14deg' }, { rotate: '0deg' }], { ...timing, easing: out });
     });
   }
@@ -186,24 +183,85 @@ function intro() {
     root.classList.add('intro-out');
     const shown = document.querySelector('.page').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, easing: out }).finished;
 
-    // Picture and greeting: a quick wind-up, then a spring into the header picture and name.
+    // Picture and greeting glide straight into the header picture and name with a smooth ease-out.
     const [fx, fy, fw] = centre(face), [hx, hy] = centre(hello);
     const [mx, my, mw] = centre(mark);
-    const k = mw / fw, whip = { duration: 600, fill: 'forwards' };
-    face.animate([
-      { transform: 'translate(0px, 0px) rotate(0deg) scale(1)', opacity: 1, easing: inout },
-      { transform: 'translate(0px, 0px) rotate(-6deg) scale(1.08)', opacity: 1, offset: 1 / 6, easing: spring },
-      { transform: `translate(${mx - fx}px, ${my - fy}px) rotate(0deg) scale(${k})`, opacity: 1 },
-    ], whip);
-    const wind = 1 / 12;
-    hi.animate([{ opacity: 1, transform: 'scale(1)', easing: spring }, { opacity: 1, transform: 'scale(1)', offset: wind, easing: spring }, { opacity: 0, transform: 'scale(.36)' }], whip);
-    name.animate([{ opacity: 0, transform: 'scale(2.6)' }, { opacity: 0, transform: 'scale(2.6)', offset: wind, easing: spring }, { opacity: 1, transform: 'scale(1)' }], whip);
-    const whipped = hello.animate([
-      { transform: 'translate(0px, 0px) skewX(0deg) scale(1)', easing: inout },
-      { transform: 'translate(0px, 0px) skewX(-12deg) scale(1.04)', offset: wind, easing: spring },
-      { transform: `translate(${nx - hx}px, ${ny - hy}px) skewX(0deg) scale(1)` },
-    ], whip).finished.then(() => { root.classList.add('intro-landed'); face.remove(); hello.remove(); });
+    const k = mw / fw, glide = { duration: 700, easing: smooth, fill: 'forwards' };
+    face.animate([{ transform: 'translate(0px, 0px) scale(1)' }, { transform: `translate(${mx - fx}px, ${my - fy}px) scale(${k})` }], glide);
+    hi.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.36)' }], glide);
+    name.animate([{ opacity: 0, transform: 'scale(2.6)' }, { opacity: 1, transform: 'scale(1)' }], glide);
+    const landed = hello.animate([{ transform: 'translate(0px, 0px)' }, { transform: `translate(${nx - hx}px, ${ny - hy}px)` }], glide)
+      .finished.then(() => { root.classList.add('intro-landed'); face.remove(); hello.remove(); });
 
-    Promise.allSettled([whipped, shown]).then(done);
+    Promise.allSettled([landed, shown]).then(done);
   }
+}
+
+// Toys in the hobbies scene and on the bookcase. Each is small, eases out smoothly and never blocks a card from opening;
+// a real drag is the only thing that cancels the click. Reduced motion keeps the state changes and drops the movement.
+const toys = document.querySelector('.scene');
+if (toys) {
+  const replay = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
+  const count = new WeakMap(), bump = el => { const n = (count.get(el) || 0) + 1; count.set(el, n); return n; };
+  // Drag to swing: the jeans, the belt, the rope, a book spine. Let go and it settles back.
+  let drag = null;
+  addEventListener('pointerdown', e => {
+    const host = e.target.closest?.('.hobby, .spine');
+    const part = host?.matches('.spine') ? host : host?.querySelector('.swing');
+    if (part) drag = { host, part, x: e.clientX, moved: false, k: host.matches('.spine') ? 0.25 : -0.35, max: host.matches('.spine') ? 12 : 24 };
+  });
+  addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) < 6) return;
+    drag.moved = true;
+    drag.part.classList.add('held');
+    drag.part.style.rotate = `${Math.max(-drag.max, Math.min(drag.max, dx * drag.k))}deg`;
+  });
+  const letGo = () => { if (!drag) return; drag.part.classList.remove('held'); drag.part.style.rotate = ''; const d = drag; drag = null; if (d.moved) d.host.dataset.dragged = '1'; };
+  addEventListener('pointerup', letGo);
+  addEventListener('pointercancel', letGo);
+  addEventListener('click', e => {
+    const host = e.target.closest?.('[data-dragged]');
+    if (host) { delete host.dataset.dragged; e.preventDefault(); }
+  }, true);
+
+  // Scene objects that react to a hover or a tap.
+  const faces = [[[31, 12]], [[27.5, 8.5], [34.5, 15.5]], [[27.5, 8.5], [31, 12], [34.5, 15.5]], [[27.5, 8.5], [34.5, 8.5], [27.5, 15.5], [34.5, 15.5]],
+    [[27.5, 8.5], [34.5, 8.5], [31, 12], [27.5, 15.5], [34.5, 15.5]], [[27.5, 8], [34.5, 8], [27.5, 12], [34.5, 12], [27.5, 16], [34.5, 16]]];
+  const poke = btn => {
+    const toy = btn.dataset.toy;
+    if (toy === 'roll') {
+      btn.querySelector('.pips').innerHTML = faces[Math.floor(Math.random() * 6)].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.3"/>`).join('');
+      replay(btn, 'play');
+    } else if (toy === 'snip' || toy === 'tap') replay(btn, 'play');
+    else if (toy === 'yarn') btn.style.setProperty('--unroll', (bump(btn) % 6) / 5);
+  };
+  toys.addEventListener('pointerover', e => { const btn = e.target.closest('.hobby'); if (e.pointerType === 'mouse' && btn && btn.dataset.toy !== 'yarn' && !btn.contains(e.relatedTarget)) poke(btn); });
+  toys.addEventListener('pointerdown', e => { const btn = e.target.closest('.hobby'); if (btn && (e.pointerType !== 'mouse' || btn.dataset.toy === 'yarn')) poke(btn); });
+  toys.addEventListener('click', e => {
+    const btn = e.target.closest('.hobby');
+    if (btn?.dataset.toy === 'climb' && bump(btn) >= 3) btn.classList.add('found');
+    if (btn?.dataset.toy === 'price') btn.querySelector('.price').textContent = ['$3', '$2', '$1', 'free'][Math.min(bump(btn), 3)];
+  });
+  // The wall clock keeps the visitor's own time.
+  const tick = () => { const d = new Date(), m = d.getMinutes();
+    toys.querySelector('.clock-m').style.rotate = `${m * 6}deg`; toys.querySelector('.clock-h').style.rotate = `${(d.getHours() % 12) * 30 + m / 2}deg`; };
+  tick(); setInterval(tick, 30000);
+
+  // Bookcase: an opened book keeps a bookmark; the cat wakes after three pats; the plant grows a leaf for each suggested read you open.
+  const cat = document.querySelector('.cat'), plant = document.querySelector('.plant');
+  document.querySelectorAll('.spine').forEach(spine => spine.addEventListener('click', e => {
+    if (e.defaultPrevented) return;
+    spine.classList.add('marked');
+    if (spine.closest('[aria-label="Suggested reads"]') && !spine.dataset.counted) { spine.dataset.counted = '1'; plant.dataset.grow = Math.min(3, +(plant.dataset.grow || 0) + 1); }
+  }));
+  cat?.addEventListener('pointerdown', () => { if (bump(cat) >= 3) cat.classList.add('awake'); replay(cat, 'flick'); });
+  // Covers: tilt toward the pointer; three taps stamp an ex libris.
+  document.querySelectorAll('.book-pop .cover').forEach(cover => {
+    cover.addEventListener('pointermove', e => { const r = cover.getBoundingClientRect();
+      cover.style.setProperty('--tx', ((e.clientY - r.top) / r.height - 0.5) * -10 + 'deg'); cover.style.setProperty('--ty', ((e.clientX - r.left) / r.width - 0.5) * 12 + 'deg'); });
+    cover.addEventListener('pointerleave', () => { cover.style.removeProperty('--tx'); cover.style.removeProperty('--ty'); });
+    cover.addEventListener('click', () => { if (bump(cover) >= 3) cover.classList.add('stamped'); });
+  });
 }

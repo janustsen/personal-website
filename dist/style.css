@@ -18,16 +18,16 @@ cite{font-style:inherit}
 
 .page{width:min(100% - 32px,72rem);margin:0 auto;padding:4.5rem 0 3rem}
 
-/* Masthead: the name, contact links and menu set left, a vertical rule as tall as the row, then the line portrait;
-   the whole group sits centered on the page. */
+/* Masthead: the line portrait on the left, a vertical rule as tall as the row, then the name, contact links and menu;
+   the whole group sits centered on the page. Phones stack the portrait above the text, centered. */
 .masthead{margin-bottom:4.5rem}
 .identity{display:flex;justify-content:center;align-items:stretch;gap:var(--mast-gap);--mast-gap:40px;--face:200px}
-.mark{flex:none;align-self:center;width:var(--face);aspect-ratio:1106/1194}
+.mark{order:-1;flex:none;align-self:center;width:var(--face);aspect-ratio:1106/1194}
 .mark>*,.intro-face>*{display:block;width:100%;height:100%}
 /* The static portrait waits hidden for site.js to swap in the drawing-in copy, so it never shows whole and then restarts.
    The head script sets .mark-wait only when motion is welcome; it shows anyway after 4 s if site.js never runs. */
 .mark-wait .mark img{opacity:0;animation:intro-safety 1ms 4s forwards}
-.who{display:flex;flex-direction:column;justify-content:center;gap:18px;min-width:0;padding:4px var(--mast-gap) 4px 0;border-right:1px solid var(--ink)}
+.who{display:flex;flex-direction:column;justify-content:center;gap:18px;min-width:0;padding:4px 0 4px var(--mast-gap);border-left:1px solid var(--ink)}
 .identity h1{font:400 var(--name)/1 var(--serif);text-transform:uppercase;letter-spacing:.06em}
 .identity h1 a{text-decoration:none}
 .contact,.jump{font-family:var(--serif);display:flex;flex-wrap:wrap;gap:4px 22px;font-size:17px}
@@ -110,6 +110,85 @@ details[open]>summary::after{content:" −"}
 .book-text .aside{font-family:var(--italic);font-style:italic;font-size-adjust:.52;color:#333}
 .book-close{position:absolute;top:10px;right:12px;font:400 14px/1 var(--caps);text-transform:uppercase;letter-spacing:.05em;background:none;border:0;padding:8px;cursor:pointer;color:var(--ink)}
 
+/* Other interests: one drawn room; each object is a button that opens a native popover card.
+   Objects sit at their scene coordinates (--x, --y, --w in % of the 800×500 room); a pulsing dot marks each one. */
+.scene{position:relative;width:100%;max-width:46rem;margin:0 auto;aspect-ratio:8/5}
+.scene svg{display:block;fill:none;stroke:currentColor;stroke-width:1.5px;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.scene svg *{vector-effect:non-scaling-stroke}
+.scene-room{position:absolute;inset:0;width:100%;height:100%;stroke:var(--faint)}
+.hobby{position:absolute;left:var(--x);top:var(--y);width:var(--w);min-width:44px;min-height:44px;padding:0;border:0;background:none;color:var(--ink);cursor:pointer}
+/* Only the drawing lifts, so the button's hit area stays put and a resting pointer never flickers between hover states. */
+.hobby svg{width:100%;height:auto;transition:translate .2s cubic-bezier(.2,.7,.25,1),filter .2s}
+.hobby:is(:hover,:focus-visible) svg{translate:0 -6px;filter:drop-shadow(0 6px 6px rgba(0,0,0,.12))}
+.hobby:focus-visible{outline:2px solid var(--ink);outline-offset:6px;border-radius:4px}
+.hobby::before{content:"";position:absolute;top:-6px;right:-6px;width:10px;height:10px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 3px #fff}
+.hobby-name{position:absolute;left:50%;bottom:calc(100% + 12px);translate:-50% 0;white-space:nowrap;padding:5px 8px;background:#fff;border:1px solid var(--ink);
+  font:400 13px/1 var(--caps);text-transform:uppercase;letter-spacing:.05em;opacity:0;pointer-events:none;transition:opacity .15s}
+.hobby:is(:hover,:focus-visible) .hobby-name{opacity:1}
+.hobby-pop{width:min(26rem,100vw - 32px);max-height:calc(100vh - 32px);padding:40px 32px 32px;border:1px solid var(--line);background:#fff;color:var(--ink);text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.12)}
+.hobby-pop::backdrop{background:rgba(255,255,255,.75)}
+.hobby-pop h3{font:italic 300 26px/1.2 var(--italic);margin-bottom:.7rem}
+.hobby-pop p{font:400 15px/1.55 var(--serif)}
+@media(prefers-reduced-motion:no-preference){
+  .hobby::before{animation:hotspot 2.4s ease-out infinite}
+  .hobby-pop:popover-open{animation:note-open .25s cubic-bezier(.2,.7,.25,1)}
+}
+@media(prefers-reduced-motion:reduce){.hobby svg{transition:none}}
+@keyframes hotspot{0%{box-shadow:0 0 0 3px #fff,0 0 0 3px rgba(0,0,0,.35)}70%,100%{box-shadow:0 0 0 3px #fff,0 0 0 14px rgba(0,0,0,0)}}
+/* Phones: too cramped for the room, so the objects become a centered grid with their names showing. */
+@media(max-width:560px){
+  .scene{aspect-ratio:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 12px;justify-items:center}
+  .scene .scene-room{display:none}
+  .hobby{position:relative;inset:auto;width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;padding:6px 0}
+  .hobby svg{width:auto;height:76px;max-width:min(100%,120px)}
+  .hobby::before{right:calc(50% - 50px);top:0}
+  .hobby-name{position:static;translate:none;opacity:1;border:0;padding:0;background:none;white-space:normal;text-align:center}
+}
+
+/* Toys (site.js): drag-to-swing parts, a die, scissors, a shoe, the yarn strand, a price tag, a clock, a chalk mark, and on the
+   bookcase a cat, a plant, bookmarks and tilting covers. Movement eases out smoothly; reduced motion keeps only the state. */
+.scene svg :is(.swing,.die,.blade-a,.blade-b,.tail,.leaves){transform-box:view-box}
+.swing{transition:rotate .7s cubic-bezier(.22,1,.36,1)}
+.swing.held,.spine.held{transition:none}
+.hobby:has(.swing){touch-action:pan-y}
+.strand{stroke-dasharray:1 1;stroke-dashoffset:calc(.8 - .8 * var(--unroll,0));transition:stroke-dashoffset .6s cubic-bezier(.22,1,.36,1)}
+.scene .pips circle,.price,.cat text{fill:currentColor;stroke:none}
+.price{font:600 7px/1 var(--sans)}
+.clock{stroke:var(--ink)}
+.clock :is(.clock-h,.clock-m){transform-box:view-box;transform-origin:410px 64px}
+.chalk{stroke:var(--muted);opacity:0;transition:opacity .8s}
+.found .chalk{opacity:1}
+.bookcase{position:relative}
+.cat{position:absolute;right:48px;bottom:100%;width:84px;margin-bottom:-1px;fill:#fff;stroke:var(--ink);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+.cat text{font:400 9px/1 var(--serif)}
+.cat-awake,.cat.awake .cat-sleep{display:none}
+.cat.awake .cat-awake{display:inline}
+.plant{align-self:flex-end;width:34px;margin:0 0 4px 10px;fill:none;stroke:var(--ink);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.plant .leaf{opacity:0;transition:opacity .6s}
+.plant[data-grow="1"] .leaf-1,.plant[data-grow="2"] :is(.leaf-1,.leaf-2),.plant[data-grow="3"] .leaf{opacity:1}
+.spine{position:relative;transform-origin:50% 100%;transition:translate .2s cubic-bezier(.2,.7,.25,1),rotate .6s cubic-bezier(.22,1,.36,1);touch-action:pan-y}
+.spine.marked::after{content:"";position:absolute;top:-9px;left:calc(50% - 2px);width:4px;height:12px;background:var(--ink);clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%)}
+.cover{position:relative;transform:perspective(600px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));transition:transform .5s cubic-bezier(.22,1,.36,1)}
+.cover.stamped::after{content:"Ex libris J. T.";position:absolute;bottom:52px;left:50%;translate:-50% 0;rotate:-8deg;padding:3px 7px;border:1px solid var(--muted);border-radius:3px;font:400 10px/1 var(--caps);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+@media(prefers-reduced-motion:no-preference){
+  .hobby.play .die{animation:roll .6s cubic-bezier(.22,1,.36,1)}
+  .hobby.play .blade-a{animation:snip-a .5s ease-in-out}
+  .hobby.play .blade-b{animation:snip-b .5s ease-in-out}
+  .hobby[data-toy="tap"].play svg{transform-origin:8px 50px;animation:tap .5s ease-in-out}
+  .cat.flick .tail{animation:flick .7s ease-in-out}
+  .plant:hover .leaves{animation:sway 1.6s ease-in-out}
+  .cat:not(.awake) .cat-sleep text{animation:doze 3s ease-in-out infinite}
+  .cat:not(.awake) .cat-sleep text+text{animation-delay:1.5s}
+}
+@media(prefers-reduced-motion:reduce){.swing,.strand,.spine,.cover,.chalk,.plant .leaf{transition:none}}
+@keyframes roll{from{rotate:-360deg}}
+@keyframes snip-a{25%,75%{rotate:-14deg}}
+@keyframes snip-b{25%,75%{rotate:14deg}}
+@keyframes tap{40%{rotate:-7deg}}
+@keyframes flick{30%{rotate:-18deg}65%{rotate:8deg}}
+@keyframes sway{30%{rotate:5deg}70%{rotate:-4deg}}
+@keyframes doze{0%,100%{opacity:.2}50%{opacity:1}}
+
 .footer{margin:5rem auto 0;padding-top:3.5rem;border-top:1px solid var(--rule);max-width:32rem;text-align:center;font-size:14px}
 .footer-links{margin-top:1rem;display:flex;justify-content:center;flex-wrap:wrap;gap:4px 10px}
 .footer-links span{color:var(--faint)}
@@ -182,8 +261,9 @@ details[open]>summary::after{content:" −"}
 /* Phones: the same row, text left and portrait right, smaller. */
 @media(max-width:560px){
   :root{--name:28px}
-  .identity{--face:84px;--mast-gap:16px}
-  .who{gap:12px}
+  .identity{--face:120px;--mast-gap:16px;flex-direction:column;align-items:center}
+  .who{gap:12px;align-items:center;text-align:center;padding:var(--mast-gap) 0 0;border-left:0;border-top:1px solid var(--ink)}
+  .contact,.jump{justify-content:center}
 }
 
 /* Bookshelf: suggested-reading tier board. */
