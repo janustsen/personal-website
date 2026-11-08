@@ -15,7 +15,7 @@
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="/assets/favicon.svg">
 <link rel="preload" href="/assets/fonts/hedvig-letters-serif.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/style.css?v=58b9662a64">
+<link rel="stylesheet" href="/style.css?v=14ff096d5e">
 <script>try{if('IntersectionObserver'in window&&!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('mark-wait')}catch(e){}try{if(!location.hash&&!sessionStorage.getItem('intro')&&'animate'in document.documentElement){sessionStorage.setItem('intro','1');document.documentElement.classList.add('intro-on');setTimeout(function(){if(!document.querySelector('.intro-stage'))document.documentElement.classList.remove('intro-on')},4000)}}catch(e){}</script>
 </head>
 <body>
@@ -190,40 +190,25 @@
 <section class="group" id="interests" aria-labelledby="interests-label">
   <h2 class="label" id="interests-label">Other interests</h2>
   <div class="items">
-    <div class="entries">
-      <article class="item reveal">
-      <h3>Karate</h3>
-      <p>First-degree black belt. National champion and four-time national medalist with the USA Junior National Team. Now I coach.</p>
-      </article>
-      <article class="item reveal">
-      <h3>Climbing</h3>
-      <p>Indoors at the gym, often with friends.</p>
-      </article>
-      <article class="item reveal">
-      <h3>Running</h3>
-      <p>Part of staying in shape.</p>
-      </article>
-      <article class="item reveal">
-      <h3>Sewing</h3>
-      <p>I crochet, and I sew some of my own pants. A friend and I made a pair of selvedge denim jeans from scratch, about thirty hours of work.</p>
-      </article>
-      <article class="item reveal">
-      <h3>Fashion</h3>
-      <p>Making those jeans got me thinking about how clothes are made, and what fast fashion costs.</p>
-      </article>
-      <article class="item reveal">
-      <h3>Thrifting</h3>
-      <p>Digging through secondhand racks.</p>
-      </article>
-      <article class="item reveal">
-      <h3>Cutting hair</h3>
-      <p>Self-taught. I was the lunchtime barber in high school and still cut friends’ hair at Stanford.</p>
-      </article>
-      <article class="item reveal">
-      <h3>Board game design</h3>
-      <p>I was the lead developer of Statesman, a board game based on Plato’s city run by philosopher-kings.</p>
-      </article>
+    <div class="scene reveal" role="group" aria-label="Hobbies scene: pick something to read about it">
+      <svg class="scene-room" viewBox="0 0 800 500" aria-hidden="true"><path d="M4 450H796M180 210H440M196 210l10 16M424 210l-10 16M12 462h40M90 470h60M300 464h70M520 468h50M700 462h80"/></svg>
+      <button class="hobby" type="button" popovertarget="hobby-climbing" style="--x:2.5%;--y:8%;--w:16.25%"><svg viewBox="0 0 130 410" aria-hidden="true"><path d="M14 4H120L128 408H4Z"/><path d="M120 4l8 -2 8 404 -8 2M128 30l8 -2M129 90l8 -2M130 150l8 -2M131 210l8 -2M132 270l8 -2M133 330l8 -2"/><path d="M42 52c9-7 22-2 19 8s-17 9-21 2z M80 104c6-8 18-6 18 3s-12 12-17 6z M34 150c10-4 18 4 14 11s-16 4-16-3z M74 196c8-6 20 0 16 9s-16 6-18-1z M30 248c7-7 20-4 18 6s-15 8-19 1z M84 290c9-4 17 5 12 11s-15 3-14-4z M46 342c8-6 19-1 17 8s-15 8-19 1z"/><path d="M100 4C94 120 106 250 98 408"/><circle cx="24" cy="100" r="1.5"/><circle cx="60" cy="226" r="1.5"/><circle cx="104" cy="356" r="1.5"/><circle cx="62" cy="120" r="1.5"/></svg><span class="hobby-name">Climbing</span></button>
+      <button class="hobby" type="button" popovertarget="hobby-karate" style="--x:32%;--y:6%;--w:12.5%"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="8" r="4"/><path d="M30 14Q50 2 70 14L66 32Q50 24 34 32Z"/><path d="M42 28h16v14H42Z"/><path d="M44 42L32 92l11 3 8-50M56 42l14 48-10 4-9-48"/><path d="M34 84l10 3M36 78l10 3M66 82l-10 3M64 76l-10 3"/></svg><span class="hobby-name">Karate</span></button>
+      <button class="hobby" type="button" popovertarget="hobby-board-game" style="--x:24%;--y:25%;--w:14%"><svg viewBox="0 0 112 80" aria-hidden="true"><path d="M4 38h86v40H4ZM4 38l16-18h86L90 38M90 78l16-18V20"/><path d="M38 46h18M40 48v22M47 48v22M54 48v22M36 72h22M40 46l7-5 7 5"/><path d="M96 44l6-6M96 54l6-6M96 64l6-6"/><circle cx="70" cy="8" r="5"/><path d="M66 14q4-3 8 0l3 14H63Z"/></svg><span class="hobby-name">Board game design</span></button>
+      <button class="hobby" type="button" popovertarget="hobby-sewing" style="--x:40%;--y:29.2%;--w:12.5%"><svg viewBox="0 0 100 64" aria-hidden="true"><circle cx="36" cy="38" r="24"/><path d="M16 26q20 6 38 30M14 40q22-2 40-22M24 58q4-26 26-42M36 14q-4 20 4 48"/><path d="M58 50q14 6 20 14"/><path d="M64 58L96 12q3-4 0-6"/></svg><span class="hobby-name">Sewing</span></button>
+      <button class="hobby" type="button" popovertarget="hobby-running" style="--x:23.2%;--y:78.8%;--w:15%"><svg viewBox="0 0 120 56" aria-hidden="true"><path d="M6 46C6 30 14 22 26 22l14 4c10 4 20-8 26-16l8 2c6 10 18 18 34 22 8 2 8 12 4 16H8Z"/><path d="M6 44H114"/><path d="M48 26l6 6M56 20l6 6M64 14l6 6"/><path d="M20 50l4-6M32 50l4-6M44 50l4-6M56 50l4-6M68 50l4-6M80 50l4-6M92 50l4-6"/></svg><span class="hobby-name">Running</span></button>
+      <button class="hobby" type="button" popovertarget="hobby-hair" style="--x:41.2%;--y:56%;--w:13.75%"><svg viewBox="0 0 110 170" aria-hidden="true"><path d="M4 90h102v7H4ZM14 97L10 170M96 97l4 73M12 140h88"/><path d="M38 58h32l-4 32H42Z"/><path d="M58 58l6-22 M64 36l-10-16M52 62l-4-30M48 32l8-12"/><circle cx="52" cy="14" r="6"/><circle cx="62" cy="16" r="6"/><path d="M74 66V8h8v58M74 14h-5M74 20h-5M74 26h-5M74 32h-5M74 38h-5M74 44h-5"/></svg><span class="hobby-name">Cutting hair</span></button>
+      <button class="hobby" type="button" popovertarget="hobby-fashion" style="--x:58.8%;--y:8%;--w:12.5%"><svg viewBox="0 0 100 230" aria-hidden="true"><path d="M50 0v6q0 6-5 6"/><path d="M50 14q6 0 6 6t-6 8L8 52H92L50 28"/><path d="M14 56H86v10H14Z"/><path d="M14 66L10 226H44L50 110 56 226H90L86 66"/><path d="M50 66v40M20 70q10 14 22 2M80 70q-10 14-22 2M10 214H44M56 214H90M28 66v6M50 66v6M72 66v6"/></svg><span class="hobby-name">Fashion</span></button>
+      <button class="hobby" type="button" popovertarget="hobby-thrifting" style="--x:75%;--y:18%;--w:22.5%"><svg viewBox="0 0 180 360" aria-hidden="true"><path d="M4 10H176M12 10V342M168 10V342M0 342H32M148 342H180"/><circle cx="8" cy="352" r="6"/><circle cx="172" cy="352" r="6"/><path d="M40 10q4 10-2 14L22 34H58L38 24M30 34L26 126H54L50 34M26 34l-8 34 6 2M54 34l8 34-6 2"/><path d="M84 10q4 10-2 14L66 34h36L82 24M68 34L60 166h46L96 34M76 34q6 10 12 0"/><path d="M128 10q4 10-2 14l-16 10h36l-20-10M112 34l-6 100h40l-6-100M114 70h30M114 98h30"/><path d="M54 58l10 14h12v-14H64M70 58q-8-10-14 0"/></svg><span class="hobby-name">Thrifting</span></button>
     </div>
+    <div class="hobby-pop" id="hobby-karate" popover><h3>Karate</h3><p>First-degree black belt. National champion and four-time national medalist with the USA Junior National Team. Now I coach.</p><button class="book-close" type="button" popovertarget="hobby-karate" popovertargetaction="hide">Close</button></div>
+    <div class="hobby-pop" id="hobby-climbing" popover><h3>Climbing</h3><p>Indoors at the gym, often with friends.</p><button class="book-close" type="button" popovertarget="hobby-climbing" popovertargetaction="hide">Close</button></div>
+    <div class="hobby-pop" id="hobby-running" popover><h3>Running</h3><p>Part of staying in shape.</p><button class="book-close" type="button" popovertarget="hobby-running" popovertargetaction="hide">Close</button></div>
+    <div class="hobby-pop" id="hobby-sewing" popover><h3>Sewing</h3><p>I crochet, and I sew some of my own pants. A friend and I made a pair of selvedge denim jeans from scratch, about thirty hours of work.</p><button class="book-close" type="button" popovertarget="hobby-sewing" popovertargetaction="hide">Close</button></div>
+    <div class="hobby-pop" id="hobby-fashion" popover><h3>Fashion</h3><p>Making those jeans got me thinking about how clothes are made, and what fast fashion costs.</p><button class="book-close" type="button" popovertarget="hobby-fashion" popovertargetaction="hide">Close</button></div>
+    <div class="hobby-pop" id="hobby-thrifting" popover><h3>Thrifting</h3><p>Digging through secondhand racks.</p><button class="book-close" type="button" popovertarget="hobby-thrifting" popovertargetaction="hide">Close</button></div>
+    <div class="hobby-pop" id="hobby-hair" popover><h3>Cutting hair</h3><p>Self-taught. I was the lunchtime barber in high school and still cut friends’ hair at Stanford.</p><button class="book-close" type="button" popovertarget="hobby-hair" popovertargetaction="hide">Close</button></div>
+    <div class="hobby-pop" id="hobby-board-game" popover><h3>Board game design</h3><p>I was the lead developer of Statesman, a board game based on Plato’s city run by philosopher-kings.</p><button class="book-close" type="button" popovertarget="hobby-board-game" popovertargetaction="hide">Close</button></div>
   </div>
 </section>
 
