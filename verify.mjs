@@ -546,8 +546,18 @@ try {
       const hotspot = page.locator(`.hobby[popovertarget="hobby-${id}"]`), pop = page.locator(`#hobby-${id}`);
       assert.equal(await hotspot.getAttribute('type'), 'button');
       assert.equal(await page.getByRole('button', { name: title, exact: true }).evaluate((el, t) => el.getAttribute('popovertarget') === t, `hobby-${id}`), true, `${id}: hotspot is labelled ${title}`);
-      const hit = await hotspot.evaluate(el => { const s = getComputedStyle(el, '::after'); return [parseFloat(s.width), parseFloat(s.height)]; });
-      assert.ok(hit[0] >= 44 && hit[1] >= 44, `${name}/${id}: hit area is at least 44px (${hit.map(Math.round).join('×')})`);
+      // Real tap points, not computed sizes: every point in the object's box opens it, and its own hit area is at least 44px each way.
+      const hit = await hotspot.evaluate(btn => {
+        btn.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' });
+        const box = btn.getBoundingClientRect(), at = (x, y) => document.elementFromPoint(x, y)?.closest('.hobby');
+        let stolen = 0;
+        for (let i = 1; i < 10; i++) for (let j = 1; j < 10; j++) if (at(box.left + box.width * i / 10, box.top + box.height * j / 10) !== btn) stolen++;
+        const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+        let x0 = cx, x1 = cx, y0 = cy, y1 = cy;
+        while (at(x0 - 1, cy) === btn) x0--; while (at(x1 + 1, cy) === btn) x1++; while (at(cx, y0 - 1) === btn) y0--; while (at(cx, y1 + 1) === btn) y1++;
+        return { stolen, w: x1 - x0, h: y1 - y0 };
+      });
+      assert.ok(hit.stolen === 0 && hit.w >= 44 && hit.h >= 44, `${name}/${id}: taps land on it with a 44px target (${JSON.stringify(hit)})`);
       assert.equal(await hotspot.evaluate(el => getComputedStyle(el).cursor), 'pointer');
       assert.equal(await hotspot.evaluate(el => getComputedStyle(el, '::before').content), 'none', `${id}: no glowing dot marks the object`);
       assert.equal(await hotspot.locator('.leader').count(), 1, `${id}: label has a leader line`);
@@ -563,6 +573,34 @@ try {
       else previous = id;
       // Next hotspot is clicked with this card open: the backdrop click closes it first, so close explicitly to keep the flow simple.
       if (previous) { await pop.locator('.book-close').click(); previous = null; }
+    }
+    assert.equal(await page.locator('.scene-room').evaluate(el => getComputedStyle(el).overflow), 'hidden', 'The room drawing (floorboards) is clipped to the scene');
+    // Phones swipe across the room (it opens on the middle, with a hint); wider screens show it whole.
+    const phone = options.viewport.width <= 560, scripted = name !== 'no-js';
+    const pan = await page.locator('.scene').evaluate(el => ({ pans: el.scrollWidth > el.clientWidth + 1, hint: getComputedStyle(document.querySelector('.scene-hint')).display !== 'none' }));
+    assert.deepEqual(pan, { pans: phone, hint: phone }, `${name}: the room pans only on phones, with a swipe hint (also without JavaScript)`);
+    if (phone && scripted) {
+      // Each edge fades only while it hides more of the room.
+      const fades = () => page.locator('.scene').evaluate(el => [el.style.getPropertyValue('--fade-l'), el.style.getPropertyValue('--fade-r')]);
+      await page.locator('.scene').evaluate(el => { el.scrollLeft = 0; el.dispatchEvent(new Event('scroll')); });
+      assert.deepEqual(await fades(), ['0px', '28px'], `${name}: at the left end only the right edge fades`);
+      await page.locator('.scene').evaluate(el => { el.scrollLeft = el.scrollWidth; el.dispatchEvent(new Event('scroll')); });
+      assert.deepEqual(await fades(), ['28px', '0px'], `${name}: at the right end only the left edge fades`);
+    }
+    if (phone && options.hasTouch && scripted) {
+      // A real touch swipe that starts on a toy (the belt) pans the room instead of being swallowed by the toy.
+      const cdp = await context.newCDPSession(page);
+      await page.locator('.scene').evaluate(el => { el.scrollLeft = el.scrollWidth; });
+      const before = await page.locator('.scene').evaluate(el => el.scrollLeft);
+      const k = await page.locator('.hobby[popovertarget="hobby-karate"]').boundingBox();
+      const y = Math.round(k.y + k.height / 2), x = Math.round(Math.max(k.x + 4, Math.min(k.x + k.width - 4, 120)));
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+      for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + i * 15, y }] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await page.waitForTimeout(400);
+      assert.ok(await page.locator('.scene').evaluate(el => el.scrollLeft) < before - 40, `${name}: a swipe starting on the belt pans the room`);
+      assert.equal(await page.locator('#hobby-karate').evaluate(el => el.matches(':popover-open')), false, `${name}: the swipe does not open the card`);
+      await cdp.detach();
     }
     // Phones (no hover) show every label; with a mouse they appear on hover or focus.
     // (Chrome's emulation can drop its no-hover state after earlier clicks, so a fresh page checks the default labels.)
@@ -593,6 +631,7 @@ try {
       if (name !== 'reduced') assert.ok(await page.locator('.scene').evaluate(el => el.classList.contains('shimmer')), 'Outlines shimmer once when the room shows');
       assert.equal(await page.locator('.hobby .trace').count() >= 8, true, 'Every object has a tracing outline');
       const drag = async (sel, part, prop) => {
+        await page.locator(sel).evaluate(el => el.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' }));
         const b = await page.locator(sel).boundingBox();
         await page.mouse.move(b.x + b.width / 2, b.y + b.height * 0.7);
         await page.mouse.down();
@@ -609,6 +648,7 @@ try {
       for (const id of ['sewing', 'board-game']) { await page.locator(`.hobby[popovertarget="hobby-${id}"]`).click(); await page.keyboard.press('Escape'); }
       assert.ok(await stitches() > s0, 'The sewing machine adds a stitch');
       assert.notEqual(await pawn(), p0, 'A pawn hops a square');
+      await page.locator('.yarn').evaluate(el => el.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'center' }));
       const yarn = await page.locator('.yarn').boundingBox();
       await page.mouse.click(yarn.x + yarn.width * 0.3, yarn.y + yarn.height * 0.6);
       assert.notEqual(await page.locator('.yarn').evaluate(el => el.style.getPropertyValue('--unroll')), '', 'Tapping the basket unrolls the yarn');
@@ -616,6 +656,19 @@ try {
       assert.ok(await page.locator('.hobby[popovertarget="hobby-climbing"]').evaluate(el => el.classList.contains('found')), 'Three climbs leave a chalk mark');
       assert.notEqual(await page.locator('.price').textContent(), '$3', 'The thrift price tag drops after a visit');
       assert.match(await page.locator('.clock-m').evaluate(el => el.style.rotate), /deg$/, 'The wall clock is set to the visitor’s time');
+      if (name === 'desktop') {
+        // Turning reduced motion on mid-visit: the pawn still moves a square but without the hop, and the outlines stop tracing.
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        await page.mouse.move(2, 2);
+        await page.waitForTimeout(700); // let the earlier hop finish
+        const p1 = await pawn();
+        await page.locator('.hobby[popovertarget="hobby-board-game"]').hover();
+        assert.notEqual(await pawn(), p1, 'With reduced motion the pawn still moves');
+        assert.equal(await page.locator('.pawn').evaluate(el => el.getAnimations().length), 0, 'With reduced motion the pawn does not hop');
+        assert.equal(await page.locator('.scene').evaluate(el => [...el.querySelectorAll('.trace')].filter(t => t.getAnimations().some(a => a.animationName === 'shimmer')).length), 0, 'With reduced motion the outlines do not trace');
+        await page.emulateMedia({ reducedMotion: 'no-preference' });
+        await page.mouse.move(2, 2);
+      }
     }
 
     // Old page URLs land on their home sections.

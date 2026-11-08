@@ -168,11 +168,10 @@ details[open]>summary::after{content:" −"}
 .scene .o{fill:#fff}
 .scene .k{fill:currentColor;stroke:none}
 .room{position:absolute;inset:0}
-.scene-room{position:absolute;inset:0;width:100%;height:100%;color:#8c8c8c;overflow:hidden}
+.scene .scene-room{position:absolute;inset:0;width:100%;height:100%;color:#8c8c8c;overflow:hidden}
 .hobby{position:absolute;left:var(--x);top:var(--y);width:var(--w);height:var(--h);padding:0;border:0;background:none;color:#262626;cursor:pointer;-webkit-tap-highlight-color:transparent}
-/* The hit area is at least 44px even where the drawing is narrower. */
-.hobby::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);translate:-50% -50%}
-.hobby svg{width:100%;height:100%;transition:translate .45s var(--ease),color .3s}
+/* The button's box is the whole hit area: boxes never overlap, and the drawing (which may overhang its box) takes no taps. */
+.hobby svg{width:100%;height:100%;pointer-events:none;transition:translate .45s var(--ease),color .3s}
 .hobby:is(:hover,:focus-visible) svg{translate:0 -2px;color:#000}
 .hobby:focus-visible{outline:none}
 .hobby .trace{stroke-width:2.4px;stroke-dasharray:1 1;stroke-dashoffset:1;opacity:0;fill:none;transition:stroke-dashoffset .9s var(--ease),opacity .4s}
@@ -183,17 +182,24 @@ details[open]>summary::after{content:" −"}
   font:italic 400 18px/1.1 var(--italic);color:var(--ink);opacity:0;transition:opacity .3s,translate .45s var(--ease)}
 .hobby:is(:hover,:focus-visible) .hobby-name{opacity:1;translate:-50% calc(-100% - 2px)}
 /* One quiet pass of every outline the first time the room scrolls into view, so it reads as clickable. */
-.scene.shimmer .trace{animation:shimmer 1.8s var(--ease) calc(var(--i) * 140ms) backwards}
 @keyframes shimmer{0%{stroke-dashoffset:1;opacity:.55}55%{stroke-dashoffset:0;opacity:.55}100%{stroke-dashoffset:0;opacity:0}}
 @media(hover:none){
   .hobby-name{opacity:1}
   .leader{stroke-dashoffset:0}
 }
-/* Phones: crop the room's empty left and top margins (show x 96–800, y 36–500) so the objects stay large, and shrink the labels. */
+.scene-hint{display:none}
+/* Phones: the room is too wide for the column at a size where every object is a 44px target, so it renders at least 448px
+   wide (the smallest box is 80 of 800 units) in a frame you swipe across. site.js opens it on the middle, fades only the
+   edges that still hide something, and hides the hint once it fits; without JavaScript both fades and the hint stay. Swipes that start on a toy pan the room too. */
 @media(max-width:560px){
-  .scene{aspect-ratio:704/464;overflow-x:clip}
-  .room{inset:auto;left:-13.64%;top:-7.76%;width:113.64%;height:107.76%}
-  .hobby-name{font-size:12px;padding:0 3px}
+  .scene{aspect-ratio:auto;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
+    mask-image:linear-gradient(to right,transparent,#000 var(--fade-l,28px),#000 calc(100% - var(--fade-r,28px)),transparent)}
+  .scene::-webkit-scrollbar{display:none}
+  .room{position:relative;inset:auto;width:max(448px,100%);aspect-ratio:8/5}
+  .hobby-name{font-size:12.5px;padding:0 3px}
+  #interests .scene .hobby{touch-action:manipulation}
+  .scene-hint{display:block;margin-top:-2.5rem;text-align:center;font:italic 400 15px/1.3 var(--italic);color:var(--muted)}
+  .scene.fits+.scene-hint{display:none}
 }
 .hobby-pop{width:min(26rem,100vw - 32px);max-height:calc(100vh - 32px);padding:40px 32px 32px;border:1px solid var(--line);background:#fff;color:var(--ink);text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.12)}
 .hobby-pop::backdrop{background:rgba(255,255,255,.75)}
@@ -216,6 +222,7 @@ details[open]>summary::after{content:" −"}
 .tag{transform-box:view-box;transform-origin:739px 264px;transition:rotate .8s var(--ease)}
 @media(prefers-reduced-motion:no-preference){
   .hobby-pop:popover-open{animation:note-open .25s cubic-bezier(.2,.7,.25,1)}
+  .scene.shimmer .trace{animation:shimmer 1.8s var(--ease) calc(var(--i) * 140ms) backwards}
   .hobby.play .needle{animation:stitch .7s ease-in-out}
   .hobby.play .clipper{animation:spin .9s var(--ease)}
   .hobby.play .die{animation:roll .6s var(--ease)}
