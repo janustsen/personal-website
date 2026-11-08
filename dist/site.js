@@ -45,7 +45,8 @@ function scrub(fig) {
   }
   fig.style.setProperty('--p', Math.min(1, Math.max(0, t)).toFixed(3));
 }
-async function svgOf(img) {
+// ghost: give every stroke a faint copy underneath, so a section drawing reads as a light sketch before it draws in.
+async function svgOf(img, ghost) {
   const res = await fetch(img.currentSrc || img.src);
   if (!res.ok) throw new Error(`${res.status}`);
   const svg = new DOMParser().parseFromString(await res.text(), 'image/svg+xml').documentElement;
@@ -53,13 +54,14 @@ async function svgOf(img) {
   if (img.alt) { svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', img.alt); } else svg.setAttribute('aria-hidden', 'true');
   const paths = svg.querySelectorAll('path');
   paths.forEach((path, i) => { path.setAttribute('pathLength', '1'); path.style.setProperty('--d', (i / paths.length * 0.92).toFixed(4)); });
+  if (ghost) paths.forEach(path => { const copy = path.cloneNode(); copy.setAttribute('class', 'ghost'); path.before(copy); });
   return document.importNode(svg, true);
 }
 async function inline(fig) {
   const img = fig.querySelector('img');
   if (!img) return;
   try {
-    const svg = await svgOf(img);
+    const svg = await svgOf(img, motion);
     if (motion) fig.classList.add('drawing');
     scrub(fig);
     fig.replaceChildren(svg);

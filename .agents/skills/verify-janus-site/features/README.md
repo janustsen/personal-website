@@ -6,3 +6,4 @@
 - [Pinned rails, drawings and header bar](rails.md)
 - [First-visit intro](intro.md)
 - [Bookshelf](bookshelf.md)
+- [Easter eggs in the drawings](eggs.md)

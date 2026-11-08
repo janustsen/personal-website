@@ -307,3 +307,17 @@ details[open]>summary::after{content:" −"}
   .shelf-tools button{margin-left:0}
 }
 @media print{.js .reveal:not(.in){opacity:1;transform:none}.footer,.jump{display:none}}
+
+/* Easter eggs in the drawings (eggs.js): only the invisible hit areas take the pointer, so nothing else in a drawing gets in the way. */
+:is(.art,.mark) svg{pointer-events:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.egg-hit{fill:transparent;stroke:none;pointer-events:all}
+.egg-tap .egg-hit{cursor:pointer}
+.egg-drag .egg-hit{cursor:grab;touch-action:pan-y}
+.egg-drag2 .egg-hit{cursor:grab;touch-action:none}
+.egg-grabbing .egg-hit{cursor:grabbing}
+:is(.art,.mark) svg path.egg-new{stroke-dasharray:none;stroke-dashoffset:0}
+:is(.art,.mark) svg path.egg-dot{fill:currentColor;stroke:none}
+.mark .egg-lids{pointer-events:none}
+/* A faint copy of every stroke sits under a section drawing, so it reads as a light sketch before it draws in. */
+.ghost{opacity:.15}
+.drawing path.ghost{stroke-dasharray:none}
