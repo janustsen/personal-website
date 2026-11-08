@@ -221,7 +221,8 @@ if (toys) {
     if (drag.slide) drag.part.style.translate = `${Math.max(-30, Math.min(60, dx * 0.6))}px 0`;
     else drag.part.style.rotate = `${Math.max(-drag.max, Math.min(drag.max, dx * drag.k))}deg`;
   });
-  const letGo = () => { if (!drag) return; drag.part.classList.remove('held'); drag.part.style.rotate = drag.part.style.translate = ''; const d = drag; drag = null; if (d.moved) d.host.dataset.dragged = '1'; };
+  // A cancelled pointer (the browser took the swipe to pan or scroll) is followed by no click, so it never marks a drag.
+  const letGo = e => { if (!drag) return; drag.part.classList.remove('held'); drag.part.style.rotate = drag.part.style.translate = ''; const d = drag; drag = null; if (d.moved && e.type === 'pointerup') d.host.dataset.dragged = '1'; };
   addEventListener('pointerup', letGo);
   addEventListener('pointercancel', letGo);
   addEventListener('click', e => {
@@ -263,8 +264,17 @@ if (toys) {
     if (btn?.dataset.toy === 'climb' && bump(btn) >= 3) btn.classList.add('found');
     if (btn?.dataset.toy === 'price') { btn.querySelector('.price').textContent = ['$3', '$2', '$1', 'free'][Math.min(bump(btn), 3)]; replay(btn, 'play'); }
   });
-  // Phones swipe across the room; it opens on the middle.
+  // Phones swipe across the room: it opens on the middle, each edge fades only while it hides more, and the hint shows only while it overflows.
+  const edges = () => {
+    const more = toys.scrollWidth - toys.clientWidth;
+    toys.classList.toggle('pans', more > 1);
+    toys.style.setProperty('--fade-l', toys.scrollLeft > 1 ? '28px' : '0px');
+    toys.style.setProperty('--fade-r', toys.scrollLeft < more - 1 ? '28px' : '0px');
+  };
   toys.scrollLeft = (toys.scrollWidth - toys.clientWidth) / 2;
+  edges();
+  toys.addEventListener('scroll', edges, { passive: true });
+  addEventListener('resize', edges);
   // The wall clock keeps the visitor's own time.
   const tick = () => { const d = new Date(), m = d.getMinutes();
     toys.querySelector('.clock-m').style.rotate = `${m * 6}deg`; toys.querySelector('.clock-h').style.rotate = `${(d.getHours() % 12) * 30 + m / 2}deg`; };
