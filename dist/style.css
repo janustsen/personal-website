@@ -86,8 +86,6 @@ details[open]>summary::after{content:" −"}
 /* Books: spines on a drawn bookcase; each spine opens a native popover with a line-drawn cover and a note.
    Every shelf row is exactly --row tall, so the plank gradient lands under each wrapped row. */
 .bookcase{max-width:46rem;border:2px solid var(--ink);border-bottom-width:0;padding:14px 14px 0}
-.shelf-label{font:400 14px/1 var(--caps);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}
-.shelf-row+.shelf-label{margin-top:22px}
 .shelf-row{--row:200px;display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:3px;padding:0 6px;margin:0 -14px;
   background:repeating-linear-gradient(transparent 0 calc(var(--row) - 4px),var(--ink) calc(var(--row) - 4px) var(--row))}
 .spine{height:var(--h);margin:calc(var(--row) - var(--h) - 4px) 0 4px;writing-mode:vertical-rl;text-orientation:sideways;padding:22px 8px;font:400 13px/1.15 var(--serif);
