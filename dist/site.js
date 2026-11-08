@@ -121,7 +121,7 @@ request();
 
 // First-visit intro. The head script in index.html adds .intro-on once per tab session, only with JavaScript,
 // working sessionStorage and no deep link. The line portrait draws itself in and "Hey, I'm Janus!" rises in, alone on the screen.
-// The first scroll, swipe, key or tap (or 3 seconds without one) whips them into the header as the page fades in.
+// The first scroll, swipe, key or tap (or 3 seconds without one) glides them smoothly into the header as the page fades in.
 // Reduced motion keeps both still and swaps to the page with a short fade.
 const root = document.documentElement;
 if (root.classList.contains('intro-on')) {
@@ -129,11 +129,8 @@ if (root.classList.contains('intro-on')) {
 }
 function intro() {
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const curve = f => CSS.supports('animation-timing-function', 'linear(0, 1)')
-    ? `linear(${Array.from({ length: 49 }, (_, i) => +f(i / 48).toFixed(4)).join()})` : 'cubic-bezier(.34,1.56,.64,1)';
-  const back = curve(t => 1 + 2.9 * (t - 1) ** 3 + 1.9 * (t - 1) ** 2);
-  const spring = curve(t => 1 - Math.exp(-6 * t) * Math.cos(t * Math.PI * 2.6));
-  const out = 'cubic-bezier(.33,1,.68,1)', inout = 'cubic-bezier(.65,0,.35,1)';
+  // Smooth ease-out everywhere: no spring, bounce or overshoot.
+  const smooth = 'cubic-bezier(.22,1,.36,1)', out = 'cubic-bezier(.33,1,.68,1)';
 
   const stage = document.createElement('div');
   stage.className = 'intro-stage';
@@ -151,7 +148,7 @@ function intro() {
   if (!still) {
     [...hi.children].forEach((letter, i) => {
       const timing = { duration: 450, delay: 350 + i * 40, fill: 'backwards' };
-      letter.animate([{ translate: '0 46px', opacity: 0 }, { opacity: 1, offset: 0.4 }, { translate: '0 0', opacity: 1 }], { ...timing, easing: back });
+      letter.animate([{ translate: '0 46px', opacity: 0 }, { opacity: 1, offset: 0.4 }, { translate: '0 0', opacity: 1 }], { ...timing, easing: smooth });
       letter.animate([{ rotate: '-14deg' }, { rotate: '0deg' }], { ...timing, easing: out });
     });
   }
@@ -186,24 +183,16 @@ function intro() {
     root.classList.add('intro-out');
     const shown = document.querySelector('.page').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 500, easing: out }).finished;
 
-    // Picture and greeting: a quick wind-up, then a spring into the header picture and name.
+    // Picture and greeting glide straight into the header picture and name with a smooth ease-out.
     const [fx, fy, fw] = centre(face), [hx, hy] = centre(hello);
     const [mx, my, mw] = centre(mark);
-    const k = mw / fw, whip = { duration: 600, fill: 'forwards' };
-    face.animate([
-      { transform: 'translate(0px, 0px) rotate(0deg) scale(1)', opacity: 1, easing: inout },
-      { transform: 'translate(0px, 0px) rotate(-6deg) scale(1.08)', opacity: 1, offset: 1 / 6, easing: spring },
-      { transform: `translate(${mx - fx}px, ${my - fy}px) rotate(0deg) scale(${k})`, opacity: 1 },
-    ], whip);
-    const wind = 1 / 12;
-    hi.animate([{ opacity: 1, transform: 'scale(1)', easing: spring }, { opacity: 1, transform: 'scale(1)', offset: wind, easing: spring }, { opacity: 0, transform: 'scale(.36)' }], whip);
-    name.animate([{ opacity: 0, transform: 'scale(2.6)' }, { opacity: 0, transform: 'scale(2.6)', offset: wind, easing: spring }, { opacity: 1, transform: 'scale(1)' }], whip);
-    const whipped = hello.animate([
-      { transform: 'translate(0px, 0px) skewX(0deg) scale(1)', easing: inout },
-      { transform: 'translate(0px, 0px) skewX(-12deg) scale(1.04)', offset: wind, easing: spring },
-      { transform: `translate(${nx - hx}px, ${ny - hy}px) skewX(0deg) scale(1)` },
-    ], whip).finished.then(() => { root.classList.add('intro-landed'); face.remove(); hello.remove(); });
+    const k = mw / fw, glide = { duration: 700, easing: smooth, fill: 'forwards' };
+    face.animate([{ transform: 'translate(0px, 0px) scale(1)' }, { transform: `translate(${mx - fx}px, ${my - fy}px) scale(${k})` }], glide);
+    hi.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.36)' }], glide);
+    name.animate([{ opacity: 0, transform: 'scale(2.6)' }, { opacity: 1, transform: 'scale(1)' }], glide);
+    const landed = hello.animate([{ transform: 'translate(0px, 0px)' }, { transform: `translate(${nx - hx}px, ${ny - hy}px)` }], glide)
+      .finished.then(() => { root.classList.add('intro-landed'); face.remove(); hello.remove(); });
 
-    Promise.allSettled([whipped, shown]).then(done);
+    Promise.allSettled([landed, shown]).then(done);
   }
 }
