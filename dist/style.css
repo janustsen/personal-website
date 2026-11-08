@@ -18,16 +18,16 @@ cite{font-style:inherit}
 
 .page{width:min(100% - 32px,72rem);margin:0 auto;padding:4.5rem 0 3rem}
 
-/* Masthead: the name, contact links and menu set left, a vertical rule as tall as the row, then the line portrait;
-   the whole group sits centered on the page. */
+/* Masthead: the line portrait on the left, a vertical rule as tall as the row, then the name, contact links and menu;
+   the whole group sits centered on the page. Phones stack the portrait above the text, centered. */
 .masthead{margin-bottom:4.5rem}
 .identity{display:flex;justify-content:center;align-items:stretch;gap:var(--mast-gap);--mast-gap:40px;--face:200px}
-.mark{flex:none;align-self:center;width:var(--face);aspect-ratio:1106/1194}
+.mark{order:-1;flex:none;align-self:center;width:var(--face);aspect-ratio:1106/1194}
 .mark>*,.intro-face>*{display:block;width:100%;height:100%}
 /* The static portrait waits hidden for site.js to swap in the drawing-in copy, so it never shows whole and then restarts.
    The head script sets .mark-wait only when motion is welcome; it shows anyway after 4 s if site.js never runs. */
 .mark-wait .mark img{opacity:0;animation:intro-safety 1ms 4s forwards}
-.who{display:flex;flex-direction:column;justify-content:center;gap:18px;min-width:0;padding:4px var(--mast-gap) 4px 0;border-right:1px solid var(--ink)}
+.who{display:flex;flex-direction:column;justify-content:center;gap:18px;min-width:0;padding:4px 0 4px var(--mast-gap);border-left:1px solid var(--ink)}
 .identity h1{font:400 var(--name)/1 var(--serif);text-transform:uppercase;letter-spacing:.06em}
 .identity h1 a{text-decoration:none}
 .contact,.jump{font-family:var(--serif);display:flex;flex-wrap:wrap;gap:4px 22px;font-size:17px}
@@ -217,8 +217,9 @@ details[open]>summary::after{content:" −"}
 /* Phones: the same row, text left and portrait right, smaller. */
 @media(max-width:560px){
   :root{--name:28px}
-  .identity{--face:84px;--mast-gap:16px}
-  .who{gap:12px}
+  .identity{--face:120px;--mast-gap:16px;flex-direction:column;align-items:center}
+  .who{gap:12px;align-items:center;text-align:center;padding:var(--mast-gap) 0 0;border-left:0;border-top:1px solid var(--ink)}
+  .contact,.jump{justify-content:center}
 }
 
 /* Bookshelf: suggested-reading tier board. */

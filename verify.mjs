@@ -64,7 +64,7 @@ async function mastheadChecks(page, name, animated, js) {
   results.push({ portrait: name, status: 'passed', mode: !js ? 'static SVG image' : animated ? 'strokes progress without scroll' : 'fully drawn, no animation' });
 }
 // First-visit intro: the line portrait (drawing itself in) and greeting alone, then on a scroll, key or swipe (or after about 3 seconds)
-// they spring into the header picture and name while the page fades in. A reload or a deep link lands straight on the page.
+// they glide smoothly into the header picture and name while the page fades in. A reload or a deep link lands straight on the page.
 async function introChecks(name, options, trigger) {
   const context = await browser.newContext(options);
   await context.addInitScript(recordPortrait, '.intro-face');
@@ -287,7 +287,7 @@ try {
     assert.equal(await page.locator('main *').evaluateAll(els => els.filter(el => /Draft|for approval/i.test(getComputedStyle(el, '::before').content)).length), 0, 'No draft tags shown');
 
     // Scroll reveal: below-the-fold content waits for the viewport only when motion is welcome.
-    const late = page.locator('main > section').last().locator('.item').last();
+    const late = page.locator('main > section').last().locator('.reveal').last();
     assert.equal(await page.evaluate(() => document.documentElement.classList.contains('js')), animated);
     assert.equal(await late.evaluate(el => getComputedStyle(el).opacity), animated ? '0' : '1');
     assert.equal(await page.locator('.opening').evaluate(el => getComputedStyle(el).opacity), '1', 'Opening About text is visible at once');
@@ -464,7 +464,7 @@ try {
   assert.equal(await page.locator('.reveal').evaluateAll(els => els.filter(el => !el.closest('[hidden]') && getComputedStyle(el).opacity !== '1').length), 0);
   await context.close();
   results.push({ preferenceChange: 'reduced motion reveals everything', status: 'passed' });
-  // Every width: no sideways overflow or clipped header links, the header group centered with the text left and the portrait right, the bar fits, and Other interests lists the hobbies.
+  // Every width: no sideways overflow or clipped header links, the header group centered with the portrait left and the text right (phones: portrait above, centered), the bar fits, and Other interests lists the hobbies.
   for (const width of [360, 390, 620, 768, 820, 1024, 1180, 1240, 1440, 1920]) {
     const mobile = width < 700;
     const sized = await browser.newContext({ viewport: { width, height: 900 }, isMobile: mobile, hasTouch: mobile });
@@ -477,14 +477,14 @@ try {
       const name = document.querySelector('.identity h1 a').getBoundingClientRect(), page = document.querySelector('.page').getBoundingClientRect(), who = document.querySelector('.who').getBoundingClientRect();
       const jump = document.querySelector('.jump');
       return { wide: document.documentElement.scrollWidth - W, outside, jumpScrolls: jump.scrollWidth > jump.clientWidth && getComputedStyle(jump).overflowX === 'auto' || jump.scrollWidth <= jump.clientWidth,
-        mark: Math.round(mark.width), centered: Math.round(Math.abs((who.left - page.left) - (page.right - mark.right))), right: mark.left >= who.right - 1 && mark.left > name.right, interests: [...document.querySelectorAll('#interests h3')].map(h => h.textContent),
+        mark: Math.round(mark.width), centered: W <= 560 ? Math.round(Math.abs((mark.left + mark.right) / 2 - (page.left + page.right) / 2)) : Math.round(Math.abs((mark.left - page.left) - (page.right - who.right))), right: W <= 560 ? mark.bottom <= who.top + 1 : mark.right <= who.left + 1 && mark.right < name.left, interests: [...document.querySelectorAll('#interests h3')].map(h => h.textContent),
         aboutEntries: document.querySelectorAll('#about article').length };
     });
     await page.evaluate(() => scrollTo(0, 2000));
     await page.waitForTimeout(450);
     const barFits = await page.evaluate(() => { const bar = document.querySelector('.bar'); return [...bar.children].every(el => getComputedStyle(el).display === 'none' || el.getBoundingClientRect().right <= innerWidth + 1); });
     assert.ok(r.wide <= 0 && r.outside === 0 && r.jumpScrolls, `${width}px: no sideways overflow or clipped text (${JSON.stringify(r)})`);
-    assert.ok(r.mark >= 80 && r.centered < 2 && r.right, `${width}px: header group is centered, text left and portrait right (${JSON.stringify(r)})`);
+    assert.ok(r.mark >= 80 && r.centered < 2 && r.right, `${width}px: header group is centered, portrait left (phones: above) and text right (${JSON.stringify(r)})`);
     assert.ok(barFits, `${width}px: header bar fits the screen`);
     assert.deepEqual(r.interests, ['Karate', 'Climbing', 'Running', 'Sewing', 'Fashion', 'Thrifting', 'Cutting hair', 'Board game design'], `${width}px: Other interests lists the hobbies`);
     assert.equal(r.aboutEntries, 0, `${width}px: those entries are no longer under About`);
