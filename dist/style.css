@@ -110,54 +110,85 @@ details[open]>summary::after{content:" −"}
 .book-text .aside{font-family:var(--italic);font-style:italic;font-size-adjust:.52;color:#333}
 .book-close{position:absolute;top:10px;right:12px;font:400 14px/1 var(--caps);text-transform:uppercase;letter-spacing:.05em;background:none;border:0;padding:8px;cursor:pointer;color:var(--ink)}
 
-/* Other interests: one drawn room; each object is a button that opens a native popover card.
-   Objects sit at their scene coordinates (--x, --y, --w in % of the 800×500 room); a pulsing dot marks each one. */
-.scene{position:relative;width:100%;max-width:46rem;margin:0 auto;aspect-ratio:8/5}
-.scene svg{display:block;fill:none;stroke:currentColor;stroke-width:1.5px;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
+/* Other interests: one drawn room, a corner of Janus's room at golden hour. Every object shares the room's 800×500 coordinates:
+   each hobby is a button at its box (--x, --y, --w, --h in % of the room) whose SVG crops the same coordinates, so the pieces
+   overlap like one drawing. The room is grey and the hobbies dark ink. Hover or focus lifts an object, traces its outline and
+   shows a lettered label on a thin leader; without hover (phones) the labels stay out. */
+.scene{position:relative;width:100%;max-width:48rem;margin:0 auto;aspect-ratio:8/5;--ease:cubic-bezier(.22,1,.36,1)}
+.scene svg{display:block;fill:none;stroke:currentColor;stroke-width:1.3px;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
 .scene svg *{vector-effect:non-scaling-stroke}
-.scene-room{position:absolute;inset:0;width:100%;height:100%;stroke:var(--faint)}
-.hobby{position:absolute;left:var(--x);top:var(--y);width:var(--w);min-width:44px;min-height:44px;padding:0;border:0;background:none;color:var(--ink);cursor:pointer}
-/* Only the drawing lifts, so the button's hit area stays put and a resting pointer never flickers between hover states. */
-.hobby svg{width:100%;height:auto;transition:translate .2s cubic-bezier(.2,.7,.25,1),filter .2s}
-.hobby:is(:hover,:focus-visible) svg{translate:0 -6px;filter:drop-shadow(0 6px 6px rgba(0,0,0,.12))}
-.hobby:focus-visible{outline:2px solid var(--ink);outline-offset:6px;border-radius:4px}
-.hobby::before{content:"";position:absolute;top:-6px;right:-6px;width:10px;height:10px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 3px #fff}
-.hobby-name{position:absolute;left:50%;bottom:calc(100% + 12px);translate:-50% 0;white-space:nowrap;padding:5px 8px;background:#fff;border:1px solid var(--ink);
-  font:400 13px/1 var(--caps);text-transform:uppercase;letter-spacing:.05em;opacity:0;pointer-events:none;transition:opacity .15s}
-.hobby:is(:hover,:focus-visible) .hobby-name{opacity:1}
+.scene .f{stroke-width:.85px}
+.scene .h{stroke-width:.6px;opacity:.7}
+.scene .b{stroke-width:2.1px}
+.scene .o{fill:#fff}
+.scene .k{fill:currentColor;stroke:none}
+.room{position:absolute;inset:0}
+.scene-room{position:absolute;inset:0;width:100%;height:100%;color:#8c8c8c;overflow:hidden}
+.hobby{position:absolute;left:var(--x);top:var(--y);width:var(--w);height:var(--h);padding:0;border:0;background:none;color:#262626;cursor:pointer;-webkit-tap-highlight-color:transparent}
+/* The hit area is at least 44px even where the drawing is narrower. */
+.hobby::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);translate:-50% -50%}
+.hobby svg{width:100%;height:100%;transition:translate .45s var(--ease),color .3s}
+.hobby:is(:hover,:focus-visible) svg{translate:0 -2px;color:#000}
+.hobby:focus-visible{outline:none}
+.hobby .trace{stroke-width:2.4px;stroke-dasharray:1 1;stroke-dashoffset:1;opacity:0;fill:none;transition:stroke-dashoffset .9s var(--ease),opacity .4s}
+.hobby:is(:hover,:focus-visible) .trace{stroke-dashoffset:0;opacity:1}
+.leader{stroke-width:.75px;stroke-dasharray:1 1;stroke-dashoffset:1;transition:stroke-dashoffset .45s var(--ease)}
+.hobby:is(:hover,:focus-visible) .leader{stroke-dashoffset:0}
+.hobby-name{position:absolute;left:var(--lx);top:var(--ly);translate:-50% -100%;padding:0 5px 1px;background:#fff;white-space:nowrap;pointer-events:none;
+  font:italic 400 18px/1.1 var(--italic);color:var(--ink);opacity:0;transition:opacity .3s,translate .45s var(--ease)}
+.hobby:is(:hover,:focus-visible) .hobby-name{opacity:1;translate:-50% calc(-100% - 2px)}
+/* One quiet pass of every outline the first time the room scrolls into view, so it reads as clickable. */
+.scene.shimmer .trace{animation:shimmer 1.8s var(--ease) calc(var(--i) * 140ms) backwards}
+@keyframes shimmer{0%{stroke-dashoffset:1;opacity:.55}55%{stroke-dashoffset:0;opacity:.55}100%{stroke-dashoffset:0;opacity:0}}
+@media(hover:none){
+  .hobby-name{opacity:1}
+  .leader{stroke-dashoffset:0}
+}
+/* Phones: crop the room's empty left and top margins (show x 96–800, y 36–500) so the objects stay large, and shrink the labels. */
+@media(max-width:560px){
+  .scene{aspect-ratio:704/464;overflow-x:clip}
+  .room{inset:auto;left:-13.64%;top:-7.76%;width:113.64%;height:107.76%}
+  .hobby-name{font-size:12px;padding:0 3px}
+}
 .hobby-pop{width:min(26rem,100vw - 32px);max-height:calc(100vh - 32px);padding:40px 32px 32px;border:1px solid var(--line);background:#fff;color:var(--ink);text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.12)}
 .hobby-pop::backdrop{background:rgba(255,255,255,.75)}
 .hobby-pop h3{font:italic 300 26px/1.2 var(--italic);margin-bottom:.7rem}
 .hobby-pop p{font:400 15px/1.55 var(--serif)}
+/* Scene toys (site.js): the belt and climbing shoes swing when dragged, the shoe slides, the needle stitches, the clipper spins,
+   a pawn hops and the die rolls, the price tag drops, a chalk handprint appears, the tape measure sways, the yarn unrolls. */
+.scene svg :is(.die,.clipper,.tape){transform-box:view-box}
+.slide{transition:translate .8s var(--ease)}
+.slide.held{transition:none}
+.hobby[data-toy="shoe"]{touch-action:pan-y}
+.stitch{opacity:0;transition:opacity .3s}
+.stitch.on{opacity:1}
+.lid{fill:currentColor;stroke:none;font:400 7.5px/1 var(--caps);letter-spacing:.08em}
+.price{font:600 6px/1 var(--sans)}
+.clock :is(.clock-h,.clock-m){transform-box:view-box;transform-origin:492px 140px}
+.chalk{stroke:var(--muted);opacity:0;transition:opacity .8s}
+.found .chalk{opacity:1}
+.yarn{cursor:pointer}
+.tag{transform-box:view-box;transform-origin:739px 264px;transition:rotate .8s var(--ease)}
 @media(prefers-reduced-motion:no-preference){
-  .hobby::before{animation:hotspot 2.4s ease-out infinite}
   .hobby-pop:popover-open{animation:note-open .25s cubic-bezier(.2,.7,.25,1)}
+  .hobby.play .needle{animation:stitch .7s ease-in-out}
+  .hobby.play .clipper{animation:spin .9s var(--ease)}
+  .hobby.play .die{animation:roll .6s var(--ease)}
+  .hobby[data-toy="tape"]:hover .tape{animation:sway 1.8s ease-in-out}
+  .hobby[data-toy="price"].play .tag{animation:sway 1.2s ease-in-out}
 }
-@media(prefers-reduced-motion:reduce){.hobby svg{transition:none}}
-@keyframes hotspot{0%{box-shadow:0 0 0 3px #fff,0 0 0 3px rgba(0,0,0,.35)}70%,100%{box-shadow:0 0 0 3px #fff,0 0 0 14px rgba(0,0,0,0)}}
-/* Phones: too cramped for the room, so the objects become a centered grid with their names showing. */
-@media(max-width:560px){
-  .scene{aspect-ratio:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 12px;justify-items:center}
-  .scene .scene-room{display:none}
-  .hobby{position:relative;inset:auto;width:100%;display:flex;flex-direction:column;align-items:center;gap:10px;padding:6px 0}
-  .hobby svg{width:auto;height:76px;max-width:min(100%,120px)}
-  .hobby::before{right:calc(50% - 50px);top:0}
-  .hobby-name{position:static;translate:none;opacity:1;border:0;padding:0;background:none;white-space:normal;text-align:center}
-}
+@media(prefers-reduced-motion:reduce){.hobby svg,.hobby .trace,.leader,.hobby-name,.slide,.tag{transition:none}}
+@keyframes stitch{25%,75%{translate:0 5px}50%{translate:0 0}}
+@keyframes spin{to{rotate:360deg}}
 
-/* Toys (site.js): drag-to-swing parts, a die, scissors, a shoe, the yarn strand, a price tag, a clock, a chalk mark, and on the
+/* Toys on the bookcase and the hobbies scene (site.js): drag-to-swing parts, the yarn strand and price tag, and on the
    bookcase a cat, a plant, bookmarks and tilting covers. Movement eases out smoothly; reduced motion keeps only the state. */
-.scene svg :is(.swing,.die,.blade-a,.blade-b,.tail,.leaves){transform-box:view-box}
+.scene svg :is(.swing,.tail,.leaves){transform-box:view-box}
 .swing{transition:rotate .7s cubic-bezier(.22,1,.36,1)}
 .swing.held,.spine.held{transition:none}
 .hobby:has(.swing){touch-action:pan-y}
 .strand{stroke-dasharray:1 1;stroke-dashoffset:calc(.8 - .8 * var(--unroll,0));transition:stroke-dashoffset .6s cubic-bezier(.22,1,.36,1)}
 .scene .pips circle,.price,.cat text{fill:currentColor;stroke:none}
-.price{font:600 7px/1 var(--sans)}
-.clock{stroke:var(--ink)}
-.clock :is(.clock-h,.clock-m){transform-box:view-box;transform-origin:410px 64px}
-.chalk{stroke:var(--muted);opacity:0;transition:opacity .8s}
-.found .chalk{opacity:1}
 .bookcase{position:relative}
 .cat{position:absolute;right:48px;bottom:100%;width:84px;margin-bottom:-1px;fill:#fff;stroke:var(--ink);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;overflow:visible}
 .cat text{font:400 9px/1 var(--serif)}
@@ -171,10 +202,6 @@ details[open]>summary::after{content:" −"}
 .cover{position:relative;transform:perspective(600px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));transition:transform .5s cubic-bezier(.22,1,.36,1)}
 .cover.stamped::after{content:"Ex libris J. T.";position:absolute;bottom:52px;left:50%;translate:-50% 0;rotate:-8deg;padding:3px 7px;border:1px solid var(--muted);border-radius:3px;font:400 10px/1 var(--caps);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 @media(prefers-reduced-motion:no-preference){
-  .hobby.play .die{animation:roll .6s cubic-bezier(.22,1,.36,1)}
-  .hobby.play .blade-a{animation:snip-a .5s ease-in-out}
-  .hobby.play .blade-b{animation:snip-b .5s ease-in-out}
-  .hobby[data-toy="tap"].play svg{transform-origin:8px 50px;animation:tap .5s ease-in-out}
   .cat.flick .tail{animation:flick .7s ease-in-out}
   .plant:hover .leaves{animation:sway 1.6s ease-in-out}
   .cat:not(.awake) .cat-sleep text{animation:doze 3s ease-in-out infinite}
@@ -182,9 +209,6 @@ details[open]>summary::after{content:" −"}
 }
 @media(prefers-reduced-motion:reduce){.swing,.strand,.spine,.cover,.chalk,.plant .leaf{transition:none}}
 @keyframes roll{from{rotate:-360deg}}
-@keyframes snip-a{25%,75%{rotate:-14deg}}
-@keyframes snip-b{25%,75%{rotate:14deg}}
-@keyframes tap{40%{rotate:-7deg}}
 @keyframes flick{30%{rotate:-18deg}65%{rotate:8deg}}
 @keyframes sway{30%{rotate:5deg}70%{rotate:-4deg}}
 @keyframes doze{0%,100%{opacity:.2}50%{opacity:1}}

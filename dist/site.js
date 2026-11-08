@@ -205,12 +205,12 @@ const toys = document.querySelector('.scene');
 if (toys) {
   const replay = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
   const count = new WeakMap(), bump = el => { const n = (count.get(el) || 0) + 1; count.set(el, n); return n; };
-  // Drag to swing: the jeans, the belt, the rope, a book spine. Let go and it settles back.
+  // Drag to swing (the belt, the climbing shoes, a book spine) or slide (the running shoe). Let go and it settles back.
   let drag = null;
   addEventListener('pointerdown', e => {
     const host = e.target.closest?.('.hobby, .spine');
-    const part = host?.matches('.spine') ? host : host?.querySelector('.swing');
-    if (part) drag = { host, part, x: e.clientX, moved: false, k: host.matches('.spine') ? 0.25 : -0.35, max: host.matches('.spine') ? 12 : 24 };
+    const part = host?.matches('.spine') ? host : host?.querySelector('.swing, .slide');
+    if (part) drag = { host, part, x: e.clientX, moved: false, slide: part.matches('.slide'), k: host.matches('.spine') ? 0.25 : -0.35, max: host.matches('.spine') ? 12 : 24 };
   });
   addEventListener('pointermove', e => {
     if (!drag) return;
@@ -218,9 +218,10 @@ if (toys) {
     if (!drag.moved && Math.abs(dx) < 6) return;
     drag.moved = true;
     drag.part.classList.add('held');
-    drag.part.style.rotate = `${Math.max(-drag.max, Math.min(drag.max, dx * drag.k))}deg`;
+    if (drag.slide) drag.part.style.translate = `${Math.max(-30, Math.min(60, dx * 0.6))}px 0`;
+    else drag.part.style.rotate = `${Math.max(-drag.max, Math.min(drag.max, dx * drag.k))}deg`;
   });
-  const letGo = () => { if (!drag) return; drag.part.classList.remove('held'); drag.part.style.rotate = ''; const d = drag; drag = null; if (d.moved) d.host.dataset.dragged = '1'; };
+  const letGo = () => { if (!drag) return; drag.part.classList.remove('held'); drag.part.style.rotate = drag.part.style.translate = ''; const d = drag; drag = null; if (d.moved) d.host.dataset.dragged = '1'; };
   addEventListener('pointerup', letGo);
   addEventListener('pointercancel', letGo);
   addEventListener('click', e => {
@@ -228,28 +229,62 @@ if (toys) {
     if (host) { delete host.dataset.dragged; e.preventDefault(); }
   }, true);
 
-  // Scene objects that react to a hover or a tap.
-  const faces = [[[31, 12]], [[27.5, 8.5], [34.5, 15.5]], [[27.5, 8.5], [31, 12], [34.5, 15.5]], [[27.5, 8.5], [34.5, 8.5], [27.5, 15.5], [34.5, 15.5]],
-    [[27.5, 8.5], [34.5, 8.5], [31, 12], [27.5, 15.5], [34.5, 15.5]], [[27.5, 8], [34.5, 8], [27.5, 12], [34.5, 12], [27.5, 16], [34.5, 16]]];
+  // Scene objects that react to a hover or a tap: the die rolls and a pawn hops a square, the needle stitches, the clipper spins.
+  const still = !motion;
+  const pip = ([x, y]) => `<circle cx="${531.5 + x * 2.6}" cy="${471 + y * 2.6}" r="1"/>`;
+  const faces = [[[0, 0]], [[-1, -1], [1, 1]], [[-1, -1], [0, 0], [1, 1]], [[-1, -1], [1, -1], [-1, 1], [1, 1]], [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]]];
+  const hop = pawn => {
+    const track = pawn.dataset.track.split(';'), from = +pawn.dataset.at, to = (from + 1) % track.length;
+    const [ax, ay] = track[from].split(',').map(Number), [bx, by] = track[to].split(',').map(Number);
+    pawn.dataset.at = to;
+    pawn.style.translate = `${bx}px ${by}px`;
+    if (!still) pawn.animate([{ translate: `${ax}px ${ay}px` }, { translate: `${(ax + bx) / 2}px ${Math.min(ay, by) - 9}px`, offset: 0.5 }, { translate: `${bx}px ${by}px` }], { duration: 480, easing: 'ease-in-out' });
+  };
   const poke = btn => {
     const toy = btn.dataset.toy;
     if (toy === 'roll') {
-      btn.querySelector('.pips').innerHTML = faces[Math.floor(Math.random() * 6)].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.3"/>`).join('');
+      btn.querySelector('.pips').innerHTML = faces[Math.floor(Math.random() * 6)].map(pip).join('');
+      hop(btn.querySelector('.pawn'));
       replay(btn, 'play');
-    } else if (toy === 'snip' || toy === 'tap') replay(btn, 'play');
-    else if (toy === 'yarn') btn.style.setProperty('--unroll', (bump(btn) % 6) / 5);
+    } else if (toy === 'sew') {
+      btn.querySelector('.stitch:not(.on)')?.classList.add('on');
+      replay(btn, 'play');
+    } else if (toy === 'clip') replay(btn, 'play');
   };
-  toys.addEventListener('pointerover', e => { const btn = e.target.closest('.hobby'); if (e.pointerType === 'mouse' && btn && btn.dataset.toy !== 'yarn' && !btn.contains(e.relatedTarget)) poke(btn); });
-  toys.addEventListener('pointerdown', e => { const btn = e.target.closest('.hobby'); if (btn && (e.pointerType !== 'mouse' || btn.dataset.toy === 'yarn')) poke(btn); });
+  const pokes = ['roll', 'sew', 'clip'];
+  toys.addEventListener('pointerover', e => { const btn = e.target.closest('.hobby'); if (e.pointerType === 'mouse' && pokes.includes(btn?.dataset.toy) && !btn.contains(e.relatedTarget)) poke(btn); });
+  toys.addEventListener('pointerdown', e => {
+    const btn = e.target.closest('.hobby'), yarn = e.target.closest('.yarn');
+    if (btn && e.pointerType !== 'mouse' && pokes.includes(btn.dataset.toy)) poke(btn);
+    if (yarn) yarn.style.setProperty('--unroll', (bump(yarn) % 6) / 5);
+  });
   toys.addEventListener('click', e => {
     const btn = e.target.closest('.hobby');
     if (btn?.dataset.toy === 'climb' && bump(btn) >= 3) btn.classList.add('found');
-    if (btn?.dataset.toy === 'price') btn.querySelector('.price').textContent = ['$3', '$2', '$1', 'free'][Math.min(bump(btn), 3)];
+    if (btn?.dataset.toy === 'price') { btn.querySelector('.price').textContent = ['$3', '$2', '$1', 'free'][Math.min(bump(btn), 3)]; replay(btn, 'play'); }
   });
   // The wall clock keeps the visitor's own time.
   const tick = () => { const d = new Date(), m = d.getMinutes();
     toys.querySelector('.clock-m').style.rotate = `${m * 6}deg`; toys.querySelector('.clock-h').style.rotate = `${(d.getHours() % 12) * 30 + m / 2}deg`; };
   tick(); setInterval(tick, 30000);
+  // Each object's outline gets a tracing copy: drawn on hover or focus, and once for every object the first time the room shows.
+  toys.querySelectorAll('.hobby').forEach((btn, i) => {
+    btn.style.setProperty('--i', i);
+    btn.querySelectorAll('.edge').forEach(edge => {
+      const trace = edge.cloneNode();
+      trace.setAttribute('class', 'trace');
+      trace.setAttribute('pathLength', '1');
+      edge.after(trace);
+    });
+  });
+  if (motion) {
+    const seen = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      seen.disconnect();
+      setTimeout(() => toys.classList.add('shimmer'), 500);
+    }, { threshold: 0.6 });
+    seen.observe(toys);
+  }
 
   // Bookcase: an opened book keeps a bookmark; the cat wakes after three pats; the plant grows a leaf for each suggested read you open.
   const cat = document.querySelector('.cat'), plant = document.querySelector('.plant');
