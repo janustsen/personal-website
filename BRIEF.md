@@ -4,7 +4,7 @@
 A professional portfolio spanning business judgment, product craft, and AI execution, with a small personal layer. Usability takes priority over spectacle. The user first chose flowing ink lines across multiple pages, then asked for the site to look like alexanderobenauer.com with basic scroll animations.
 
 ## Structure and motion
-The current page structure, contact links, Bookshelf behavior, and motion are documented in [README.md](README.md#design-and-sources).
+The current page structure, contact links, Books shelf, and motion are documented in [README.md](README.md#design-and-sources).
 
 Visual design and JavaScript fallbacks follow [README.md](README.md#design-and-sources).
 

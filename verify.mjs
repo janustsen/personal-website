@@ -469,7 +469,7 @@ try {
     assert.ok(await page.evaluate(() => ['A', 'SUMMARY'].includes(document.activeElement.tagName)));
 
     // Books: spines on a drawn shelf (the held-back one hidden); a spine opens a native popover with a line-drawn cover and its note.
-    assert.equal(await page.locator('.spine:visible').count(), 28, 'Eight read books and the 20 Bookshelf suggestions are on the shelf');
+    assert.equal(await page.locator('.spine:visible').count(), 28, 'Eight read books and the 20 suggested reads are on the shelf');
     assert.equal(await page.locator('#books img, #books .art').count(), 0, 'Books has no side drawing');
     await page.evaluate(() => document.getElementById('books').scrollIntoView({ behavior: 'instant' }));
     await page.waitForTimeout(900);
@@ -574,56 +574,14 @@ try {
     }
 
     // Old page URLs land on their home sections.
-    for (const id of ['building', 'experience', 'about']) {
+    for (const id of ['building', 'experience', 'about', 'books']) {
       await page.goto(new URL(`${id}/`, base).href);
       await page.waitForURL(`${base}#${id}`);
     }
 
-    // Bookshelf tier board.
-    await page.goto(new URL('bookshelf/', base).href, { waitUntil: 'networkidle' });
-    assert.equal(await page.locator('h1').innerText(), 'BOOKSHELF');
-    assert.equal(await page.locator('.book').count(), 20);
-    await portraitOnly(page);
-    assert.equal(await page.locator('img, svg, .art').count(), 0, 'Bookshelf has no drawings or photos');
-    assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Bookshelf links carry no arrow glyphs');
-    const book = page.locator('[data-book="strategy"]');
-    await book.locator('summary').click();
-    assert.equal(await book.getAttribute('open'), '');
-    const otherBook = page.locator('.book:not([data-book="strategy"])').first();
-    await otherBook.locator('summary').click();
-    assert.equal(await otherBook.getAttribute('open'), '');
-    assert.equal(await book.getAttribute('open'), '', 'Opening another book must keep existing notes open');
-    await otherBook.locator('summary').click();
-    if (name !== 'no-js') {
-      assert.equal(await page.locator('.book select, .book-controls').count(), 0, 'Books have no tier or status menus');
-      await book.locator('summary').focus();
-      await page.keyboard.press('c');
-      await page.reload({ waitUntil: 'networkidle' });
-      assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'C', 'Keyboard move persists');
-      await page.locator('#book-search').fill('Rumelt');
-      assert.equal(await page.locator('.book:visible').count(), 1);
-      await page.locator('#book-topic').selectOption('Philosophy');
-      assert.ok(await page.locator('#no-books').isVisible());
-      await page.getByRole('button', { name: 'Reset shelf' }).click();
-      assert.equal(await page.locator('.book:visible').count(), 20);
-      assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'S');
-      if (name === 'desktop') {
-        await book.locator('summary').dragTo(page.locator('.tier[data-tier="A"] .tier-label'));
-        assert.equal(await book.evaluate(el => el.closest('.tier').dataset.tier), 'A');
-        await page.getByRole('button', { name: 'Reset shelf' }).click();
-      }
-    } else {
-      assert.equal(await page.locator('.shelf-tools').isVisible(), false);
-      await book.locator('summary').press('Enter');
-      assert.equal(await book.getAttribute('open'), null);
-    }
-    assert.ok(await noOverflow(page), `${name}: bookshelf has no horizontal overflow`);
-    await page.screenshot({ path: join(evidence, `${name}-bookshelf.png`), fullPage: true });
-    await page.getByRole('link', { name: '← Janus Tsen' }).click();
-    await page.waitForURL(base);
 
     assert.deepEqual(errors, []);
-    results.push({ scenario: name, status: 'passed', reveal: animated ? 'on scroll' : 'static', heldBack: heldBack.length, bookshelf: name === 'no-js' ? 'native details' : 'tiers, keyboard moves, filter, reset', overflow: false, errors });
+    results.push({ scenario: name, status: 'passed', reveal: animated ? 'on scroll' : 'static', heldBack: heldBack.length, overflow: false, errors });
     await context.close();
   }
   for (const [name, options, trigger] of [

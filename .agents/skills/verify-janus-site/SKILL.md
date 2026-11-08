@@ -25,8 +25,6 @@ Keep the generated PNGs and `results.json`. Read the top-of-page, full-page, dis
 The verification script closes only its own Chrome in `finally`. Keep the owned HTTP server running while the user reviews the local preview; stop it using its retained session when the preview is no longer needed. Preserve screenshots and results. Stop a named CLI browser only if this task created it. Never kill processes by name.
 
 ## Helpers and maintenance
-`verify.mjs` is the executable check. The feature map is in `features/`, including `features/bookshelf.md`. Keep it current using `maintain-verification-skill` after changes.
+`verify.mjs` is the executable check. The feature map is in `features/`. Keep it current using `maintain-verification-skill` after changes.
 
 An egg pass at desktop, phone (touch) and reduced-motion desktop drives the easter eggs in the drawings and the portrait (see `features/eggs.md`); read `eggs-*.png`.
-
-The drive also verifies all 20 Bookshelf entries, that they carry no tier or status menus, native no-JS disclosure, keyboard tier moves (select a book and press S, A, B or C) with persistence after reload, search/topic filtering, reset, and desktop drag-and-drop.

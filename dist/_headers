@@ -2,7 +2,5 @@
   Cache-Control: public, max-age=0, must-revalidate
 /site.js
   Cache-Control: public, max-age=0, must-revalidate
-/bookshelf.js
-  Cache-Control: public, max-age=0, must-revalidate
 /assets/drawings/*
   Cache-Control: public, max-age=0, must-revalidate
