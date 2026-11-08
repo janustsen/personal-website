@@ -113,8 +113,9 @@ async function introChecks(name, options, trigger) {
   if (!still) {
     await page.waitForFunction(() => document.documentElement.classList.contains('intro-out'), null, { timeout: 4000 });
     await page.waitForTimeout(250);
-    // The masthead portrait keeps drawing in, in step with the intro copy that lands on it; nothing else animates.
-    const moving = await page.evaluate(() => [...document.querySelectorAll('.page *')].filter(el => !el.matches('.mark') && el.getAnimations().length).length);
+    // The masthead portrait keeps drawing in, in step with the intro copy that lands on it; nothing else moves into place
+    // (endless decorative loops such as the hotspot dots and the dozing cat are not entrances).
+    const moving = await page.evaluate(() => [...document.querySelectorAll('.page *')].filter(el => !el.matches('.mark') && el.getAnimations().some(a => a.effect.getComputedTiming().iterations !== Infinity)).length);
     assert.equal(moving, 0, `${name}: the page fades in as a whole; no blocks are dealt into place`);
     await page.screenshot({ path: join(evidence, `intro-${name}-2-mid.png`) });
   }
@@ -360,6 +361,58 @@ try {
       await page.screenshot({ path: join(evidence, `${name}-book-${id}.png`) });
       if (id === 'bge') await page.keyboard.press('Escape'); else await pop.locator('.book-close').click();
       assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, `${id}: book closes`);
+    }
+
+    // Other interests: a drawn scene; every object is a real button that opens its hobby card (one at a time, Escape or a click outside closes it).
+    const hobbies = { climbing: 'Climbing', karate: 'Karate', 'board-game': 'Board game design', sewing: 'Sewing', running: 'Running', hair: 'Cutting hair', fashion: 'Fashion', thrifting: 'Thrifting' };
+    assert.equal(await page.locator('#interests .hobby').count(), 8, 'Eight hobby objects in the scene');
+    assert.equal(await page.locator('#interests article, #interests .entries').count(), 0, 'Hobbies are no longer a left-aligned list');
+    await page.evaluate(() => document.getElementById('interests').scrollIntoView({ behavior: 'instant' }));
+    await page.waitForTimeout(900);
+    await page.locator('#interests').screenshot({ path: join(evidence, `${name}-hobbies-scene.png`) });
+    const sceneBox = await page.locator('.scene').boundingBox(), itemsBox = await page.locator('#interests .items').boundingBox();
+    assert.ok(Math.abs((sceneBox.x - itemsBox.x) - (itemsBox.x + itemsBox.width - sceneBox.x - sceneBox.width)) < 2, `${name}: hobbies scene is centered`);
+    let previous = null;
+    for (const [id, title] of Object.entries(hobbies)) {
+      const hotspot = page.locator(`.hobby[popovertarget="hobby-${id}"]`), pop = page.locator(`#hobby-${id}`);
+      assert.equal(await hotspot.getAttribute('type'), 'button');
+      assert.equal(await page.getByRole('button', { name: title, exact: true }).evaluate((el, t) => el.getAttribute('popovertarget') === t, `hobby-${id}`), true, `${id}: hotspot is labelled ${title}`);
+      const box = await hotspot.boundingBox();
+      assert.ok(box.width >= 44 && box.height >= 44, `${name}/${id}: hotspot is at least 44px (${Math.round(box.width)}×${Math.round(box.height)})`);
+      assert.equal(await hotspot.evaluate(el => getComputedStyle(el).cursor), 'pointer');
+      assert.notEqual(await hotspot.evaluate(el => getComputedStyle(el, '::before').content), 'none', `${id}: hotspot carries a highlight dot`);
+      await hotspot.click();
+      assert.ok(await pop.evaluate(el => el.matches(':popover-open')), `${name}/${id}: hotspot opens its card`);
+      assert.equal(await pop.locator('h3').textContent(), title);
+      assert.ok(await pop.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && getComputedStyle(el).textAlign === 'center'; }), `${name}/${id}: card fits the screen, centered`);
+      if (previous) assert.equal(await page.locator(`#hobby-${previous}`).evaluate(el => el.matches(':popover-open')), false, `${id}: only one card is open`);
+      await page.waitForTimeout(350);
+      await page.screenshot({ path: join(evidence, `${name}-hobby-${id}.png`) });
+      if (id === 'running') { await page.mouse.click(4, 4); assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, 'A click outside closes the card'); previous = null; }
+      else if (id === 'hair') { await page.keyboard.press('Escape'); assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, 'Escape closes the card'); previous = null; }
+      else previous = id;
+      // Next hotspot is clicked with this card open: the backdrop click closes it first, so close explicitly to keep the flow simple.
+      if (previous) { await pop.locator('.book-close').click(); previous = null; }
+    }
+    // Keyboard: Tab reaches a hotspot with a visible focus ring, Enter opens its card.
+    await page.locator('.hobby[popovertarget="hobby-karate"]').focus();
+    await page.keyboard.press('Enter');
+    assert.ok(await page.locator('#hobby-karate').evaluate(el => el.matches(':popover-open')), 'Enter opens a hobby card');
+    await page.keyboard.press('Escape');
+    assert.notEqual(await page.locator('.hobby[popovertarget="hobby-karate"]').evaluate(el => getComputedStyle(el).outlineStyle), 'none', 'Focused hotspot shows a focus ring');
+    if (name !== 'no-js') {
+      // Toys: dragging the jeans swings them and does not open the card; the price tag drops each visit; three climbs leave a chalk mark.
+      const jeans = await page.locator('.hobby[popovertarget="hobby-fashion"]').boundingBox();
+      await page.mouse.move(jeans.x + jeans.width / 2, jeans.y + jeans.height * 0.7);
+      await page.mouse.down();
+      await page.mouse.move(jeans.x + jeans.width / 2 + 50, jeans.y + jeans.height * 0.7, { steps: 5 });
+      assert.notEqual(await page.locator('.hobby[popovertarget="hobby-fashion"] .swing').evaluate(el => el.style.rotate), '', 'Dragging the jeans swings them');
+      await page.mouse.up();
+      assert.equal(await page.locator('#hobby-fashion').evaluate(el => el.matches(':popover-open')), false, 'A drag does not open the card');
+      for (let i = 0; i < 3; i++) { await page.locator('.hobby[popovertarget="hobby-climbing"]').click(); await page.keyboard.press('Escape'); }
+      assert.ok(await page.locator('.hobby[popovertarget="hobby-climbing"]').evaluate(el => el.classList.contains('found')), 'Three climbs leave a chalk mark');
+      assert.notEqual(await page.locator('.price').textContent(), '$3', 'The thrift price tag drops after a visit');
+      assert.match(await page.locator('.clock-m').evaluate(el => el.style.rotate), /deg$/, 'The wall clock is set to the visitor’s time');
     }
 
     // Old page URLs land on their home sections.
