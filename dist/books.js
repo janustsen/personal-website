@@ -36,21 +36,25 @@ for (const pop of document.querySelectorAll('.book-pop')) {
       return;
     }
     // Closing: the popover leaves the top layer at once, so a still copy of the backdrop and card fades out
-    // while a copy of the cover flies back to its spine.
+    // while a copy of the cover flies back to its spine. The fade starts wherever the opening fade had got to
+    // (the card's text, surface and backdrop share one timing), and the copy keeps the card's scroll position.
     const card = pop.getBoundingClientRect(), c = cover.getBoundingClientRect(), s = spine.getBoundingClientRect();
-    const layer = Object.assign(document.createElement('div'), { className: 'book-exit' });
+    const shown = +getComputedStyle(pop.querySelector('.book-close')).opacity, scrolled = pop.scrollTop;
+    const layer = Object.assign(document.createElement('div'), { className: 'book-exit', inert: true });
     layer.setAttribute('aria-hidden', 'true');
     const veil = Object.assign(document.createElement('div'), { className: 'book-veil' });
     const still = Object.assign(pop.cloneNode(true), { id: '', className: 'book-pop shown' });
     still.removeAttribute('popover');
     still.querySelector('.cover').style.visibility = 'hidden';
     fixedAt(still, card);
+    still.style.overflow = 'hidden';
     const ghost = cover.cloneNode(true);
     ghost.classList.add('cover-ghost');
     fixedAt(ghost, c);
     layer.append(veil, still, ghost);
     document.body.append(layer);
-    for (const el of [veil, still]) el.animate([{ opacity: 1 }, { opacity: 0 }], { ...fly, fill: 'forwards' });
+    still.scrollTop = scrolled;
+    for (const el of [veil, still]) el.animate([{ opacity: shown }, { opacity: 0 }], { ...fly, fill: 'forwards' });
     ghost.animate(flight(s, c, false), { duration: fly.duration, fill: 'forwards' })
       .finished.then(() => { layer.remove(); if (!pop.matches(':popover-open')) spine.style.visibility = ''; });
   });
