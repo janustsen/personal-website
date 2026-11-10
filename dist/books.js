@@ -2,42 +2,61 @@
 // and the drawn shelf and covers hide small things to play with.
 // Without JavaScript the popovers still open; with reduced motion they simply fade.
 const motion = !matchMedia('(prefers-reduced-motion: reduce)').matches;
-const out = 'cubic-bezier(.22,.61,.36,1)'; // ease-out, no overshoot
+// One duration and easing for the cover, the card and the backdrop (style.css uses the same --fly and --fly-ease).
+const fly = { duration: 520, easing: 'cubic-bezier(.22,.61,.36,1)' };
 const spineOf = pop => document.querySelector(`.spine[popovertarget="${pop.id}"]`);
 
-// The cover starts edge-on at the spine (rotateY 90deg, spine height), turns to face you,
-// then travels and grows into its place. Closing plays the same path back on a copy.
-function flight(spine, cover) {
-  const s = spine.getBoundingClientRect(), c = cover.getBoundingClientRect(), k = s.height / c.height;
+// Opening, the cover starts edge-on at the spine (rotateY 90deg, spine height), turns to face you in a quick
+// first quarter, then glides and grows into its place. Closing glides back and turns edge-on into the spine in a
+// quick last quarter. Only transform moves; both rects are read once, before anything animates.
+function flight(s, c, open) {
+  const k = s.height / c.height;
   const dx = s.left + s.width / 2 - (c.left + c.width / 2), dy = s.top + s.height / 2 - (c.top + c.height / 2);
-  return [
-    { transform: `translate(${dx}px,${dy}px) scale(${k}) perspective(500px) rotateY(90deg)` },
-    { transform: `translate(${dx}px,${dy}px) scale(${k}) perspective(500px) rotateY(0deg)`, offset: .35 },
-    { transform: 'none' },
-  ];
+  const at = deg => ({ transform: `translate(${dx}px,${dy}px) scale(${k}) perspective(500px) rotateY(${deg}deg)` });
+  return open
+    ? [{ ...at(90), easing: 'cubic-bezier(.3,.6,.6,1)' }, { ...at(0), offset: .25, easing: fly.easing }, { transform: 'none' }]
+    : [{ transform: 'none', easing: fly.easing }, { ...at(0), offset: .75, easing: 'cubic-bezier(.4,0,.7,.4)' }, at(90)];
 }
+const fixedAt = (el, r) => Object.assign(el.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, margin: 0 });
 
 for (const pop of document.querySelectorAll('.book-pop')) {
   const cover = pop.querySelector('.cover'), spine = spineOf(pop);
+  if (!motion || !spine) continue;
   pop.addEventListener('beforetoggle', e => {
-    if (!motion || !spine) return;
-    if (e.newState === 'open') { cover.style.opacity = '0'; return; }
-    // Closing: the popover vanishes at once, so a copy of the cover flies back to the shelf.
-    for (const a of cover.getAnimations()) a.cancel();
-    const r = cover.getBoundingClientRect();
-    const ghost = Object.assign(cover.cloneNode(true), { className: 'cover cover-ghost' });
-    Object.assign(ghost.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, margin: 0, zIndex: 50, background: '#fff', pointerEvents: 'none' });
-    document.body.append(ghost);
-    const back = ghost.animate(flight(spine, ghost).reverse().map(k => k.offset ? { ...k, offset: 1 - k.offset } : k), { duration: 600, easing: 'cubic-bezier(.55,0,.75,.4)', fill: 'forwards' });
-    back.finished.then(() => { ghost.remove(); if (!pop.matches(':popover-open')) spine.style.visibility = ''; });
-  });
-  pop.addEventListener('toggle', e => {
-    if (e.newState !== 'open' || !motion || !spine) return;
-    pop.classList.add('flying');
-    const keys = flight(spine, cover);
-    spine.style.visibility = 'hidden';
-    cover.style.opacity = '';
-    cover.animate(keys, { duration: 700, easing: out }).finished.then(() => pop.classList.remove('flying'), () => pop.classList.remove('flying'));
+    for (const a of cover.getAnimations()) if (!(a instanceof CSSAnimation)) a.cancel();
+    if (e.newState === 'open') {
+      // The card and backdrop fade in by CSS (@starting-style); the cover flies from the spine in the same frame.
+      pop.classList.add('flying');
+      requestAnimationFrame(() => {
+        const keys = flight(spine.getBoundingClientRect(), cover.getBoundingClientRect(), true);
+        spine.style.visibility = 'hidden';
+        const done = () => pop.classList.remove('flying');
+        cover.animate(keys, fly.duration).finished.then(done, done);
+      });
+      return;
+    }
+    // Closing: the popover leaves the top layer at once, so a still copy of the backdrop and card fades out
+    // while a copy of the cover flies back to its spine. The fade starts wherever the opening fade had got to
+    // (the card's text, surface and backdrop share one timing), and the copy keeps the card's scroll position.
+    const card = pop.getBoundingClientRect(), c = cover.getBoundingClientRect(), s = spine.getBoundingClientRect();
+    const shown = +getComputedStyle(pop.querySelector('.book-close')).opacity, scrolled = pop.scrollTop;
+    const layer = Object.assign(document.createElement('div'), { className: 'book-exit', inert: true });
+    layer.setAttribute('aria-hidden', 'true');
+    const veil = Object.assign(document.createElement('div'), { className: 'book-veil' });
+    const still = Object.assign(pop.cloneNode(true), { id: '', className: 'book-pop shown' });
+    still.removeAttribute('popover');
+    still.querySelector('.cover').style.visibility = 'hidden';
+    fixedAt(still, card);
+    still.style.overflow = 'hidden';
+    const ghost = cover.cloneNode(true);
+    ghost.classList.add('cover-ghost');
+    fixedAt(ghost, c);
+    layer.append(veil, still, ghost);
+    document.body.append(layer);
+    still.scrollTop = scrolled;
+    for (const el of [veil, still]) el.animate([{ opacity: shown }, { opacity: 0 }], { ...fly, fill: 'forwards' });
+    ghost.animate(flight(s, c, false), { duration: fly.duration, fill: 'forwards' })
+      .finished.then(() => { layer.remove(); if (!pop.matches(':popover-open')) spine.style.visibility = ''; });
   });
 }
 

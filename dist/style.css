@@ -4,7 +4,7 @@
 @font-face{font-family:Inter;src:url('/assets/fonts/inter.woff2') format('woff2');font-weight:400 700;font-display:swap}
 @font-face{font-family:"Unica One";src:url('/assets/fonts/unica-one.woff2') format('woff2');font-display:swap}
 
-:root{--ink:#000;--muted:#6b6b6b;--faint:#8f8f8f;--rule:rgba(0,0,0,.15);--line:rgba(0,0,0,.3);--wash:#f4f4f2;--label:5rem;--text:27rem;--gap:3.5rem;--bar:48px;--pin:calc(var(--bar) + 28px);--serif:"Hedvig Letters Serif",Georgia,serif;--italic:"Crimson Pro",Georgia,serif;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--caps:"Unica One","Arial Narrow",sans-serif;--name:clamp(32px,4vw,58px)}
+:root{--fly:.52s;--fly-ease:cubic-bezier(.22,.61,.36,1);--ink:#000;--muted:#6b6b6b;--faint:#8f8f8f;--rule:rgba(0,0,0,.15);--line:rgba(0,0,0,.3);--wash:#f4f4f2;--label:5rem;--text:27rem;--gap:3.5rem;--bar:48px;--pin:calc(var(--bar) + 28px);--serif:"Hedvig Letters Serif",Georgia,serif;--italic:"Crimson Pro",Georgia,serif;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--caps:"Unica One","Arial Narrow",sans-serif;--name:clamp(32px,4vw,58px)}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:calc(var(--bar) + 12px)}
 body{margin:0;background:#fff;color:var(--ink);font:14px/1.4 var(--sans);-webkit-font-smoothing:antialiased}
@@ -85,7 +85,8 @@ details[open]>summary::after{content:" −"}
 
 /* Books: spines on a drawn bookcase; each spine opens a native popover with a line-drawn cover and a note.
    Every shelf row is exactly --row tall, so the plank gradient lands under each wrapped row. */
-.bookcase{max-width:46rem;border:2px solid var(--ink);border-bottom-width:0;padding:14px 14px 0}
+/* The same width as the hobbies scene below it, centered the same way. */
+.bookcase{max-width:48rem;margin:0 auto;width:100%;border:2px solid var(--ink);border-bottom-width:0;padding:14px 14px 0}
 .shelf-row{--row:200px;display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:3px;padding:0 6px;margin:0 -14px;
   background:repeating-linear-gradient(transparent 0 calc(var(--row) - 4px),var(--ink) calc(var(--row) - 4px) var(--row))}
 .spine{height:var(--h);margin:calc(var(--row) - var(--h) - 4px) 0 4px;writing-mode:vertical-rl;text-orientation:sideways;padding:22px var(--pad,8px);font:400 13px/1.15 var(--serif);
@@ -112,8 +113,9 @@ details[open]>summary::after{content:" −"}
 .prop,.bookend,.spider{fill:none;stroke:var(--ink);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
 .prop svg,.bookend svg,.spider svg{display:block;overflow:visible}
 .prop g,.bookend g{transition:opacity .6s var(--out),transform .7s var(--out);transform-box:fill-box;transform-origin:center}
-.open-book{margin:0 0 1px 40px}
-.open-book svg{width:72px}
+/* It lies open on the top book of its stack, centered on that book's 124px length (its --len). */
+.open-book{margin:0 0 -2px calc((124px - 80px) / 2)}
+.open-book svg{width:80px}
 .open-book .page{transform-box:view-box;transform-origin:36px 24px;transition:transform .9s var(--out)}
 .open-book.on .page{transform:scaleX(-1)}
 .mug svg{width:38px;margin:0 0 0 14px}
@@ -134,10 +136,10 @@ details[open]>summary::after{content:" −"}
 .spider.dragging{transition:none;cursor:grabbing}
 @property --drop{syntax:'<length>';inherits:true;initial-value:18px}
 .book-pop{--out:cubic-bezier(.22,.61,.36,1);width:min(40rem,100vw - 32px);max-height:calc(100vh - 32px);padding:32px;border:1px solid var(--line);background:#fff;color:var(--ink);box-shadow:0 18px 50px rgba(0,0,0,.12)}
-.book-pop:popover-open{display:flex;gap:28px;align-items:flex-start}
+.book-pop:is(:popover-open,.shown){display:flex;gap:28px;align-items:flex-start}
 .book-pop::backdrop{background:rgba(255,255,255,.75)}
 .cover{flex:none;width:11rem;aspect-ratio:2/3;display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:26px 16px;text-align:center;
-  border:1.5px solid var(--ink);outline:1px solid var(--ink);outline-offset:-8px}
+  border:1.5px solid var(--ink);outline:1px solid var(--ink);outline-offset:-8px;background:#fff}
 .cover-title{font:italic 400 22px/1.15 var(--italic)}
 .cover-title::after{content:"";display:block;width:2.5rem;margin:14px auto 0;border-top:1px solid var(--ink)}
 .cover-art{flex:none;height:5.5rem;width:100%;margin:10px 0 6px;fill:none;stroke:var(--ink);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;overflow:visible;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -153,6 +155,10 @@ details[open]>summary::after{content:" −"}
 .book-text p{font:400 15px/1.55 var(--serif)}
 .book-text p+p{margin-top:.6rem}
 .book-text .aside{font-family:var(--italic);font-style:italic;font-size-adjust:.52;color:#333}
+.book-exit{position:fixed;inset:0;z-index:30;pointer-events:none}
+.book-veil{position:absolute;inset:0;background:rgba(255,255,255,.75)}
+.book-exit>*{will-change:opacity}
+.book-exit>.cover-ghost{will-change:transform}
 .book-close{position:absolute;top:10px;right:12px;font:400 14px/1 var(--caps);text-transform:uppercase;letter-spacing:.05em;background:none;border:0;padding:8px;cursor:pointer;color:var(--ink)}
 
 /* Other interests: one drawn room, a corner of Janus's room at golden hour. Every object shares the room's 800×500 coordinates:
@@ -251,7 +257,7 @@ details[open]>summary::after{content:" −"}
 .plant[data-grow="1"] .leaf-1,.plant[data-grow="2"] :is(.leaf-1,.leaf-2),.plant[data-grow="3"] .leaf{opacity:1}
 .stack>.plant{align-self:flex-start;margin:0 0 0 16px}
 .spine{position:relative;transform-origin:50% 100%;transition:translate .2s cubic-bezier(.2,.7,.25,1),rotate .6s cubic-bezier(.22,1,.36,1);touch-action:pan-y}
-.spine.marked::after{content:"";position:absolute;top:-9px;left:calc(50% - 2px);width:4px;height:12px;background:var(--ink);clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%)}
+.spine:not(.flat).marked::after{content:"";position:absolute;top:-9px;left:calc(50% - 2px);width:4px;height:12px;background:var(--ink);clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%)}
 .cover{position:relative;transform:perspective(600px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));transition:transform .5s cubic-bezier(.22,1,.36,1)}
 .cover.stamped::after{content:"Ex libris J. T.";position:absolute;bottom:52px;left:50%;translate:-50% 0;rotate:-8deg;padding:3px 7px;border:1px solid var(--muted);border-radius:3px;font:400 10px/1 var(--caps);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 @media(prefers-reduced-motion:no-preference){
@@ -284,8 +290,17 @@ details[open]>summary::after{content:" −"}
   :is(.mark,.intro-face).drawing path{stroke-dashoffset:calc(1 - var(--p))}
   :is(.mark,.intro-face).drawing polygon{opacity:var(--p)}
   /* The cover illustration draws itself in once the book has spun into place (books.js runs the spin). */
-  .book-pop:popover-open .cover-art path{stroke-dasharray:1 1;animation:cover-ink 1.3s cubic-bezier(.45,0,.55,1) .55s both}
+  .book-pop:popover-open .cover-art path{stroke-dasharray:1 1;animation:cover-ink 1.2s cubic-bezier(.45,0,.55,1) var(--fly) both}
+  /* Opening is one motion: while the cover flies in from its spine (books.js), the card's surface, text and the
+     backdrop fade in with the same duration and easing. Closing plays it back on a still copy (.book-exit). */
   .book-pop.flying{overflow:visible}
+  .book-pop.flying .cover{will-change:transform}
+  .book-pop,.book-pop::backdrop,.book-pop>:not(.cover){transition:opacity var(--fly) var(--fly-ease),background-color var(--fly) var(--fly-ease),border-color var(--fly) var(--fly-ease),box-shadow var(--fly) var(--fly-ease)}
+  @starting-style{
+    .book-pop:popover-open{background-color:transparent;border-color:transparent;box-shadow:0 18px 50px transparent}
+    .book-pop:popover-open::backdrop{opacity:0}
+    .book-pop:popover-open>:not(.cover){opacity:0}
+  }
 }
 @property --p{syntax:'<number>';inherits:true;initial-value:0}
 @keyframes draw-in{from{--p:0}to{--p:1}}
@@ -324,7 +339,7 @@ details[open]>summary::after{content:" −"}
   .spine{font-size:11.5px;padding:18px max(2px,var(--pad,8px) - 4px)}
   .spine.flat{font-size:11px;padding:0 14px}
   .spine.face{width:76px;font-size:13.5px}
-  .book-pop:popover-open{flex-direction:column;align-items:center;gap:20px;padding:40px 20px 24px}
+  .book-pop:is(:popover-open,.shown){flex-direction:column;align-items:center;gap:20px;padding:40px 20px 24px}
   .cover{width:10rem}
   .cover-title{font-size:19px}
   .cover-art{height:4.75rem}
