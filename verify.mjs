@@ -481,6 +481,15 @@ try {
     // line illustration draws in; reduced motion fades. Each cover has a click-to-play part; Escape or Close closes it.
     const ids = await page.locator('.spine:visible').evaluateAll(els => els.map(el => el.getAttribute('popovertarget').slice(5)));
     assert.equal(ids.length, 28);
+    if (animated) await page.evaluate(() => {
+      window.bookSpins = new Set();
+      const animate = Element.prototype.animate;
+      Element.prototype.animate = function (keyframes, options) {
+        const pop = this.closest?.('.book-pop');
+        if (pop && this.classList.contains('cover') && /rotateY\(90deg\)/.test(JSON.stringify(keyframes))) window.bookSpins.add(pop.id);
+        return animate.call(this, keyframes, options);
+      };
+    });
     for (const [i, id] of ids.entries()) {
       const spine = page.locator(`[popovertarget="book-${id}"].spine`);
       await spine.click();
@@ -489,7 +498,7 @@ try {
       const motionState = await pop.evaluate(el => ({ ink: el.querySelector('.cover-art path') && getComputedStyle(el.querySelector('.cover-art path')).animationName, paths: el.querySelectorAll('.cover-art path').length }));
       assert.ok(motionState.paths >= 1, `${id}: cover has its own line illustration`);
       const spins = () => page.evaluate(id => document.querySelector(`#book-${id} .cover`).getAnimations().some(a => /rotateY\(90deg\)/.test(JSON.stringify(a.effect.getKeyframes()))), id);
-      if (animated) await page.waitForFunction(id => document.querySelector(`#book-${id} .cover`).getAnimations().some(a => /rotateY\(90deg\)/.test(JSON.stringify(a.effect.getKeyframes()))), id, { timeout: 1000 })
+      if (animated) await page.waitForFunction(id => window.bookSpins.has(`book-${id}`), id, { timeout: 1000 })
         .catch(() => { throw new Error(`${id}: book never spun into the preview`); });
       else { await page.waitForTimeout(100); assert.equal(await spins(), false, `${id}: no spin without motion`); }
       assert.equal(motionState.ink, animated || name === 'no-js' ? 'cover-ink' : 'none', `${id}: illustration draws in only with motion`);
