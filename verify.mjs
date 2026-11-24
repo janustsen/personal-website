@@ -456,7 +456,7 @@ try {
     await page.waitForURL(`${base}#experience`);
     for (let attempt = 0; attempt < 50 && Math.abs(await page.locator('#experience').evaluate(el => el.getBoundingClientRect().top)) >= 4; attempt++) await page.waitForTimeout(100);
     assert.ok(await page.locator('#experience').evaluate(el => Math.abs(el.getBoundingClientRect().top - parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop)) < 4), 'Jump link lands on its section, below the bar');
-    for (const id of ['verdnt', 'trus']) {
+    for (const id of ['cadelen', 'trus']) {
       const summary = page.locator(`#${id} summary`);
       await summary.click();
       assert.equal(await page.locator(`#${id} details`).getAttribute('open'), '');
