@@ -151,7 +151,7 @@ function slide(g, { x = [0, 0], y = [0, 0], back = true }) {
 // Count taps; the nth one (and every nth after) runs the secret.
 function counter(n, every, secret) { let c = 0; return () => { c++; if (c % n === 0) secret(c / n); else every?.(c); }; }
 
-// Building: the Verdnt studio bench.
+// Building: the Cadelen Studio bench.
 function building(svg, part) {
   // 1. The two chairs roll sideways and drift back under the bench. The bench edge behind each chair is filled in,
   // so it shows once the chair rolls away.

@@ -2,7 +2,7 @@
 
 `dist/eggs.js` wires each drawing once `site.js` has swapped in its inline SVG. It groups the strokes inside a rectangle of the drawing (in the drawing's own 800×1000 units) and lays an invisible `.egg-hit` rectangle over each group; only those rectangles take the pointer. Movement uses ease-out or ease-in-out curves, never a spring. Reduced motion keeps every egg but drops the movement: new strokes fade in, dragged parts return at once. Without JavaScript there are no eggs.
 
-## Building (Verdnt studio bench)
+## Building (Cadelen Studio bench)
 1. Drag either chair sideways: it rolls and eases back under the bench (a white backing hides the bench edge behind it, and the edge is filled in where it was).
 2. Tap any of the 12 drinks on the retail shelf: it lifts off the shelf and settles back.
 3. Tap the can on the bench: bubbles fizz up out of it.
