@@ -430,7 +430,12 @@ async function bookChecks(page, name, animated, books) {
     await capture(page, `${name}-book-${id}.png`);
     if (i % 2) await page.keyboard.press('Escape'); else await pop.locator('.book-close').click();
     assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, `${id}: book closes`);
-    if (animated) await spine.waitFor({ state: 'visible', timeout: 700 });
+    // Sample the 520ms return flight each frame through the existing 700ms deadline.
+    if (animated) await page.waitForFunction(id => {
+      const button = document.querySelector(`.spine[popovertarget="book-${id}"]`);
+      return button.checkVisibility({ visibilityProperty: true }) && button.getBoundingClientRect().width > 0 &&
+        button.getBoundingClientRect().height > 0;
+    }, id, { timeout: 700 });
     assert.equal(await spine.evaluate(el => getComputedStyle(el).visibility), 'visible', `${id}: book returns to the shelf`);
   }
 }
