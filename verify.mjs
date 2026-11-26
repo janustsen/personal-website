@@ -2,10 +2,16 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 const { chromium } = await import(process.env.PLAYWRIGHT_CORE_PATH || 'playwright-core');
+const ci = process.argv.includes('--ci');
+const linksOnly = process.argv.includes('--links-only');
 const base = process.env.SITE_URL || 'http://127.0.0.1:63027/';
 const evidence = process.env.EVIDENCE_DIR || 'work/verification';
 await mkdir(evidence, { recursive: true });
-const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : chromium.executablePath()), headless: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : chromium.executablePath()), args: ['--use-mock-keychain', '--password-store=basic'], headless: true });
+// Hosted checks do not publish page PNGs. Locator screenshots still exercise visibility and scrolling.
+async function capture(page, file, options) {
+  if (!ci) await page.screenshot({ path: join(evidence, file), ...options });
+}
 const heldBack = ['B1'];
 const results = [];
 // The first-visit intro plays once per tab session; the page checks below start from the settled page.
@@ -60,7 +66,7 @@ async function mastheadChecks(page, name, animated, js) {
     assert.equal(await page.locator('.mark').evaluate(m => m.classList.contains('drawing')), animated, `${name}: reduced motion skips draw-in`);
     assert.equal(await page.evaluate(() => scrollY), 0, `${name}: portrait completes without scrolling`);
   }
-  await page.screenshot({ path: join(evidence, `${name}-portrait-3-finished.png`) });
+  await capture(page, `${name}-portrait-3-finished.png`);
   results.push({ portrait: name, status: 'passed', mode: !js ? 'static SVG image' : animated ? 'strokes progress without scroll' : 'fully drawn, no animation' });
 }
 // First-visit intro: the line portrait (drawing itself in) and greeting alone, then on a scroll, key or swipe (or after about 3 seconds)
@@ -82,7 +88,7 @@ async function introChecks(name, options, trigger) {
     assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible', mark: '1' }, `${name}: ${trigger === 'blocked' ? 'page and portrait show once a blocked site.js cancels the intro' : 'no intro without JavaScript'}`);
     await portraitOnly(page);
     assert.ok(await page.locator('.mark img').evaluate(img => img.complete && img.naturalWidth > 0 && /\/assets\/drawings\/portrait\.svg$/.test(new URL(img.src).pathname)), `${name}: loaded line portrait fallback`);
-    await page.screenshot({ path: join(evidence, `intro-${name}-fallback.png`) });
+    await capture(page, `intro-${name}-fallback.png`);
     await context.close();
     results.push({ intro: name, status: 'passed', shown: false });
     return;
@@ -117,13 +123,13 @@ async function introChecks(name, options, trigger) {
     // (endless decorative loops such as the hotspot dots and the dozing cat are not entrances).
     const moving = await page.evaluate(() => [...document.querySelectorAll('.page *')].filter(el => !el.matches('.mark') && el.getAnimations().some(a => a.effect.getComputedTiming().iterations !== Infinity)).length);
     assert.equal(moving, 0, `${name}: the page fades in as a whole; no blocks are dealt into place`);
-    await page.screenshot({ path: join(evidence, `intro-${name}-2-mid.png`) });
+    await capture(page, `intro-${name}-2-mid.png`);
   }
   const ended = await (await page.waitForFunction(() => !document.documentElement.classList.contains('intro-on') && performance.now(), null, { timeout: 6000, polling: 'raf' })).jsonValue();
   if (trigger === 'auto') assert.ok(ended > 3000 && ended < 5000, `${name}: auto-advances after about 3 seconds (settled at ${Math.round(ended)} ms)`);
   else assert.ok(ended - fired < (still ? 600 : 2300), `${name}: the intro hands over in one short burst (${Math.round(ended - fired)} ms)`);
   await page.waitForTimeout(300);
-  await page.screenshot({ path: join(evidence, `intro-${name}-3-settled.png`) });
+  await capture(page, `intro-${name}-3-settled.png`);
   assert.deepEqual(await state(), { on: false, stage: false, page: '1', h1: 'visible', mark: '1' }, `${name}: the page is fully back`);
   const settled = await page.evaluate(() => ({ watch: window.introWatch, scrollY,
     moved: [...document.querySelectorAll('.contact, .jump, .label, .opening > *, .item, .art')].filter(el => getComputedStyle(el).transform !== 'none' && !el.matches('.reveal:not(.in)')).length,
@@ -170,7 +176,7 @@ async function eggChecks(context, name, touch, animated) {
   if (animated && !touch) {
     const top = await page.evaluate(() => { const f = document.querySelector('.span[data-art="building"] .art'); return { p: parseFloat(getComputedStyle(f).getPropertyValue('--p')), visible: f.getBoundingClientRect().top < innerHeight }; });
     assert.ok(top.visible && top.p < 0.2, `${name}: Building drawing is on screen at the top, barely drawn (${JSON.stringify(top)})`);
-    await page.screenshot({ path: join(evidence, `eggs-${name}-sketch-at-top.png`) });
+    await capture(page, `eggs-${name}-sketch-at-top.png`);
   }
   const parts = () => page.evaluate(() => ['building', 'experience', 'values'].map(a => document.querySelectorAll(`.span[data-art="${a}"] .egg-hit`).length).concat(document.querySelectorAll('.mark .egg-hit').length));
   const cdp = touch ? await context.newCDPSession(page) : null;
@@ -257,8 +263,18 @@ async function eggChecks(context, name, touch, animated) {
   // Portrait: a tap blinks, the tie swings, the pocket square peeks out, and the seventh face tap adds a flower.
   await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
   await page.waitForTimeout(500);
+  // Sample the 140ms blink in the input event, before the touch driver returns.
+  await page.evaluate(() => {
+    const lids = document.querySelector('.egg-lids');
+    addEventListener('pointerup', () => {
+      const before = lids.getAnimations();
+      addEventListener('pointerup', () => {
+        window.tappedBlink = lids.getAnimations().filter(animation => !before.includes(animation)).length;
+      }, { once: true });
+    }, { capture: true, once: true });
+  });
   await tap(M, 600, 520);
-  assert.ok(await page.evaluate(() => document.querySelector('.egg-lids').getAnimations().length === 1), `${name}: blink`);
+  assert.ok(await page.evaluate(() => window.tappedBlink === 1), `${name}: blink`);
   await shot('portrait-blink', '.mark');
   await page.waitForTimeout(300);
   await tap(M, 600, 1000);
@@ -283,7 +299,7 @@ async function railChecks(context, name, pinned, animated) {
   await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; });
   const bar = page.locator('.bar');
   assert.equal(await bar.evaluate(el => el.classList.contains('on')), false, 'Bar hidden while the header shows');
-  await page.screenshot({ path: join(evidence, `rails-${name}-bar-hidden.png`) });
+  await capture(page, `rails-${name}-bar-hidden.png`);
   const span = page.locator('.span[data-art="experience"]');
   const fig = span.locator('.art');
   await span.scrollIntoViewIfNeeded();
@@ -292,7 +308,7 @@ async function railChecks(context, name, pinned, animated) {
     await page.evaluate(t => { const s = document.querySelector('.span[data-art="experience"]'); const f = s.querySelector('.art');
       const pin = parseFloat(getComputedStyle(f).top) || 0; scrollTo(0, scrollY + s.getBoundingClientRect().top - pin + t * (s.offsetHeight - f.offsetHeight)); }, t);
     await page.waitForTimeout(250);
-    await page.screenshot({ path: join(evidence, `rails-${name}-pin-${t}.png`) });
+    await capture(page, `rails-${name}-pin-${t}.png`);
     return page.evaluate(() => { const f = document.querySelector('.span[data-art="experience"] .art'); const l = document.querySelector('#experience-label');
       return { top: f.getBoundingClientRect().top, label: l.getBoundingClientRect().top, pin: parseFloat(getComputedStyle(f).top), position: getComputedStyle(f).position,
         p: f.classList.contains('drawing') ? parseFloat(getComputedStyle(f).getPropertyValue('--p')) : 1, drawing: f.classList.contains('drawing'), bar: document.querySelector('.bar').classList.contains('on'),
@@ -324,7 +340,7 @@ async function railChecks(context, name, pinned, animated) {
     const samples = [];
     for (const frac of [0.9, 0.75, 0.5, 0.3, 0.1]) {
       await place(frac); await page.waitForTimeout(200); samples.push(await read());
-      await page.screenshot({ path: join(evidence, `rails-${name}-draw-${frac}.png`) });
+      await capture(page, `rails-${name}-draw-${frac}.png`);
     }
     if (pinned) for (let k = 1; k <= 12; k++) { await page.evaluate(() => scrollBy(0, innerHeight * 0.15)); await page.waitForTimeout(120); const r = await read(); samples.push(r); if (r.p >= 1) break; }
     const ps = samples.map(x => x.p);
@@ -364,19 +380,80 @@ async function railChecks(context, name, pinned, animated) {
   await page.evaluate(() => scrollTo(0, 0));
   await page.waitForTimeout(500);
   assert.equal(await bar.evaluate(el => el.classList.contains('on')), false, `${name}: bar expands back into the header at the top`);
-  await page.screenshot({ path: join(evidence, `rails-${name}-bar-return.png`) });
+  await capture(page, `rails-${name}-bar-return.png`);
   await page.close();
   results.push({ rails: name, status: 'passed' });
 }
 const noOverflow = page => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
-try {
-  for (const scenario of [
+const scenarios = [
     { name: 'desktop', viewport: { width: 1440, height: 1000 } },
     { name: 'phone', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
     { name: 'compact', viewport: { width: 360, height: 640 }, isMobile: true, hasTouch: true },
     { name: 'reduced', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' },
     { name: 'no-js', viewport: { width: 390, height: 844 }, javaScriptEnabled: false },
-  ]) {
+];
+
+async function bookChecks(page, name, animated, books) {
+  if (animated) await page.evaluate(() => {
+    window.bookSpins = new Set();
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      const pop = this.closest?.('.book-pop');
+      if (pop && this.classList.contains('cover') && /rotateY\(90deg\)/.test(JSON.stringify(keyframes))) window.bookSpins.add(pop.id);
+      return animate.call(this, keyframes, options);
+    };
+  });
+  for (const [i, id] of books) {
+    const spine = page.locator(`[popovertarget="book-${id}"].spine`);
+    await spine.click();
+    const pop = page.locator(`#book-${id}`);
+    assert.ok(await pop.evaluate(el => el.matches(':popover-open')), `${id}: spine opens its book`);
+    const motionState = await pop.evaluate(el => ({ ink: el.querySelector('.cover-art path') && getComputedStyle(el.querySelector('.cover-art path')).animationName, paths: el.querySelectorAll('.cover-art path').length }));
+    assert.ok(motionState.paths >= 1, `${id}: cover has its own line illustration`);
+    const spins = () => page.evaluate(id => document.querySelector(`#book-${id} .cover`).getAnimations().some(a => /rotateY\(90deg\)/.test(JSON.stringify(a.effect.getKeyframes()))), id);
+    if (animated) await page.waitForFunction(id => window.bookSpins.has(`book-${id}`), id, { timeout: 1000 })
+      .catch(() => { throw new Error(`${id}: book never spun into the preview`); });
+    else { await page.waitForTimeout(100); assert.equal(await spins(), false, `${id}: no spin without motion`); }
+    assert.equal(motionState.ink, animated || name === 'no-js' ? 'cover-ink' : 'none', `${id}: illustration draws in only with motion`);
+    // A JS-disabled document animates CSS but never calls the frame-based poll.
+    if (name === 'no-js') await page.waitForTimeout(2000);
+    else await page.waitForFunction(id => [...document.querySelectorAll(`#book-${id} .cover-art path`)]
+      .every(path => parseFloat(getComputedStyle(path).strokeDashoffset || 0) === 0), id,
+    { timeout: name === 'reduced' ? 300 : 2000 });
+    assert.ok(await pop.locator('.cover').isVisible() && (await pop.locator('.cover-title').textContent()) === (await spine.textContent()), `${id}: cover drawing shows the title`);
+    assert.ok(await pop.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight; }), `${id}: book fits the screen`);
+    assert.ok(await pop.locator('.cover-art path').evaluateAll(ps => ps.every(p => parseFloat(getComputedStyle(p).strokeDashoffset || 0) === 0)), `${id}: illustration finishes drawn`);
+    if (name !== 'no-js') {
+      await pop.locator('.cover-art').click();
+      assert.ok(await pop.locator('.cover-art').evaluate(el => el.classList.contains('on') && el.querySelector('.e')), `${id}: cover has a part that plays on click`);
+    }
+    await capture(page, `${name}-book-${id}.png`);
+    if (i % 2) await page.keyboard.press('Escape'); else await pop.locator('.book-close').click();
+    assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, `${id}: book closes`);
+    // Sample the 520ms return flight each frame through the existing 700ms deadline.
+    if (animated) await page.waitForFunction(id => {
+      const button = document.querySelector(`.spine[popovertarget="book-${id}"]`);
+      return button.checkVisibility({ visibilityProperty: true }) && button.getBoundingClientRect().width > 0 &&
+        button.getBoundingClientRect().height > 0;
+    }, id, { timeout: 700 });
+    assert.equal(await spine.evaluate(el => getComputedStyle(el).visibility), 'visible', `${id}: book returns to the shelf`);
+  }
+}
+
+async function resumeCheck(page) {
+  const resume = await page.request.get(new URL('assets/janus-tsen-resume.pdf', base).href);
+  assert.ok(resume.ok() && resume.headers()['content-type'] === 'application/pdf', 'Resume PDF is served');
+}
+
+async function redirectChecks(page) {
+  // Old page URLs land on their home sections.
+  for (const [path, id] of [['building', 'building'], ['experience', 'experience'], ['about', 'about'], ['bookshelf', 'books']]) {
+    await page.goto(new URL(`${path}/`, base).href);
+    await page.waitForURL(`${base}#${id}`);
+  }
+}
+
+async function homeChecks(scenario) {
     const { name, ...options } = scenario;
     const animated = name !== 'reduced' && name !== 'no-js';
     const context = await browser.newContext(options);
@@ -384,10 +461,21 @@ try {
     if (animated) await context.addInitScript(recordPortrait, '.mark');
     const page = await context.newPage();
     const errors = [];
-    page.on('pageerror', error => errors.push(error.message));
-    page.on('response', response => { if (response.url().startsWith(base) && response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
+    const watchErrors = tab => {
+      tab.on('pageerror', error => errors.push(error.message));
+      tab.on('response', response => { if (response.url().startsWith(base) && response.status() >= 400) errors.push(`${response.status()} ${response.url()}`); });
+    };
+    watchErrors(page);
     assert.equal((await page.goto(base, { waitUntil: 'networkidle' })).status(), 200);
     await page.evaluate(() => document.fonts.ready);
+    if (linksOnly) {
+      await resumeCheck(page);
+      await redirectChecks(page);
+      assert.deepEqual(errors, []);
+      await context.close();
+      results.push({ links: name, status: 'passed' });
+      return;
+    }
     await mastheadChecks(page, name, animated, name !== 'no-js');
     assert.equal(await page.locator('h1').textContent(), 'Janus Tsen');
     assert.ok(await page.evaluate(() => document.fonts.check('17px "Hedvig Letters Serif"') && document.fonts.check('italic 17px "Crimson Pro"') && document.fonts.check('28px "Unica One"')), 'Site fonts load');
@@ -399,12 +487,11 @@ try {
     // Resume sits in the contact row (and the bar and footer rows) and serves a PDF.
     assert.deepEqual(await page.locator('.contact a').allTextContents(), ['Email', 'LinkedIn', 'GitHub', 'X', 'Resume']);
     for (const row of ['.contact', '.bar-social', '.footer-links']) assert.equal(await page.locator(`${row} a`, { hasText: 'Resume' }).getAttribute('href'), '/assets/janus-tsen-resume.pdf', `${row} links the resume`);
-    const resume = await page.request.get(new URL('assets/janus-tsen-resume.pdf', base).href);
-    assert.ok(resume.ok() && resume.headers()['content-type'] === 'application/pdf', 'Resume PDF is served');
+    await resumeCheck(page);
     // About runs the full width of the content column.
     assert.ok(await page.locator('#about').evaluate(s => Math.abs(s.querySelector('.opening').getBoundingClientRect().right - s.querySelector('.items').getBoundingClientRect().right) < 2), 'About spans the page');
     assert.ok(await noOverflow(page), `${name}: no horizontal overflow at load`);
-    await page.screenshot({ path: join(evidence, `${name}-home-top.png`) });
+    await capture(page, `${name}-home-top.png`);
 
     // Held-back personal entries stay hidden; nothing on the page carries a draft tag.
     assert.deepEqual(await page.locator('[data-draft]').evaluateAll(els => els.map(el => el.dataset.draft)), heldBack);
@@ -444,7 +531,7 @@ try {
     await page.waitForFunction(() => { const path = [...document.querySelectorAll('.art')].pop().querySelector('svg path:last-of-type');
       return !path || parseFloat(getComputedStyle(path).strokeDashoffset) === 0; }, null, { timeout: 6000 });
     assert.equal(await page.locator('a').evaluateAll(links => links.filter(a => /[\u2197\u2196\u2198\u2199]/.test(a.textContent)).length), 0, 'Links carry no arrow glyphs');
-    await page.screenshot({ path: join(evidence, `${name}-home-full.png`), fullPage: true });
+    await capture(page, `${name}-home-full.png`, { fullPage: true });
 
     // Section jumps and project disclosures.
     await page.evaluate(() => scrollTo(0, 0));
@@ -461,7 +548,7 @@ try {
       await summary.click();
       assert.equal(await page.locator(`#${id} details`).getAttribute('open'), '');
       assert.equal(await page.locator(`#${id} .detail-body`).evaluate(el => getComputedStyle(el).animationName), name === 'reduced' ? 'none' : 'note-open');
-      await page.screenshot({ path: join(evidence, `${name}-${id}-open.png`) });
+      await capture(page, `${name}-${id}-open.png`);
       await summary.press('Enter');
       assert.equal(await page.locator(`#${id} details`).getAttribute('open'), null);
     }
@@ -473,7 +560,7 @@ try {
     assert.equal(await page.locator('#books img, #books .art').count(), 0, 'Books has no side drawing');
     await page.evaluate(() => document.getElementById('books').scrollIntoView({ behavior: 'instant' }));
     await page.waitForTimeout(900);
-    await page.screenshot({ path: join(evidence, `${name}-books-shelf.png`) });
+    await capture(page, `${name}-books-shelf.png`);
     // A lived-in shelf: books leaning on a neighbour, two flat stacks, a bookend and drawn props.
     const shelves = await page.locator('.shelf-row').evaluateAll(rows => rows.map(row => ({ stack: row.querySelectorAll('.stack .spine.flat').length, lean: row.querySelectorAll('.spine.lean, .spine.lean-right').length, face: row.querySelectorAll('.spine.face').length })));
     assert.ok(shelves.length === 3 && shelves.every(s => s.stack >= 2 && s.stack <= 4 && s.lean >= 1 && s.face >= 1) && await page.locator('.bookend').count() === 1, `Every shelf has a flat stack, a leaning book and a face-out book (${JSON.stringify(shelves)})`);
@@ -481,40 +568,21 @@ try {
     // line illustration draws in; reduced motion fades. Each cover has a click-to-play part; Escape or Close closes it.
     const ids = await page.locator('.spine:visible').evaluateAll(els => els.map(el => el.getAttribute('popovertarget').slice(5)));
     assert.equal(ids.length, 28);
-    if (animated) await page.evaluate(() => {
-      window.bookSpins = new Set();
-      const animate = Element.prototype.animate;
-      Element.prototype.animate = function (keyframes, options) {
-        const pop = this.closest?.('.book-pop');
-        if (pop && this.classList.contains('cover') && /rotateY\(90deg\)/.test(JSON.stringify(keyframes))) window.bookSpins.add(pop.id);
-        return animate.call(this, keyframes, options);
-      };
-    });
-    for (const [i, id] of ids.entries()) {
-      const spine = page.locator(`[popovertarget="book-${id}"].spine`);
-      await spine.click();
-      const pop = page.locator(`#book-${id}`);
-      assert.ok(await pop.evaluate(el => el.matches(':popover-open')), `${id}: spine opens its book`);
-      const motionState = await pop.evaluate(el => ({ ink: el.querySelector('.cover-art path') && getComputedStyle(el.querySelector('.cover-art path')).animationName, paths: el.querySelectorAll('.cover-art path').length }));
-      assert.ok(motionState.paths >= 1, `${id}: cover has its own line illustration`);
-      const spins = () => page.evaluate(id => document.querySelector(`#book-${id} .cover`).getAnimations().some(a => /rotateY\(90deg\)/.test(JSON.stringify(a.effect.getKeyframes()))), id);
-      if (animated) await page.waitForFunction(id => window.bookSpins.has(`book-${id}`), id, { timeout: 1000 })
-        .catch(() => { throw new Error(`${id}: book never spun into the preview`); });
-      else { await page.waitForTimeout(100); assert.equal(await spins(), false, `${id}: no spin without motion`); }
-      assert.equal(motionState.ink, animated || name === 'no-js' ? 'cover-ink' : 'none', `${id}: illustration draws in only with motion`);
-      await page.waitForTimeout(name === 'reduced' ? 300 : 2000);
-      assert.ok(await pop.locator('.cover').isVisible() && (await pop.locator('.cover-title').textContent()) === (await spine.textContent()), `${id}: cover drawing shows the title`);
-      assert.ok(await pop.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight; }), `${id}: book fits the screen`);
-      assert.ok(await pop.locator('.cover-art path').evaluateAll(ps => ps.every(p => parseFloat(getComputedStyle(p).strokeDashoffset || 0) === 0)), `${id}: illustration finishes drawn`);
-      if (name !== 'no-js') {
-        await pop.locator('.cover-art').click();
-        assert.ok(await pop.locator('.cover-art').evaluate(el => el.classList.contains('on') && el.querySelector('.e')), `${id}: cover has a part that plays on click`);
-      }
-      await page.screenshot({ path: join(evidence, `${name}-book-${id}.png`) });
-      if (i % 2) await page.keyboard.press('Escape'); else await pop.locator('.book-close').click();
-      assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, `${id}: book closes`);
-      if (animated) await page.waitForTimeout(700);
-      assert.equal(await spine.evaluate(el => getComputedStyle(el).visibility), 'visible', `${id}: book returns to the shelf`);
+    const books = [...ids.entries()];
+    if (ci && name !== 'no-js') {
+      // Each tab has its own open popover and keyboard focus. Exercise both close methods
+      // in each tab while the other tab's real cover animation runs.
+      const shelfContext = await browser.newContext(options);
+      await shelfContext.addInitScript(skipIntro);
+      const otherShelf = await shelfContext.newPage();
+      watchErrors(otherShelf);
+      await otherShelf.goto(new URL('#books', base).href);
+      const middle = Math.ceil(books.length / 2);
+      await Promise.all([bookChecks(page, name, animated, books.slice(0, middle)),
+        bookChecks(otherShelf, name, animated, books.slice(middle))]);
+      await shelfContext.close();
+    } else {
+      await bookChecks(page, name, animated, books);
     }
     if (name !== 'no-js') {
       // Shelf easter eggs: dragging a leaning book upright never opens it and it eases back; the mug steams, the glasses flip, the bookend reveals a mouse after five nudges, the spider drops on its thread.
@@ -576,7 +644,7 @@ try {
       assert.ok(await pop.evaluate(el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && getComputedStyle(el).textAlign === 'center'; }), `${name}/${id}: card fits the screen, centered`);
       if (previous) assert.equal(await page.locator(`#hobby-${previous}`).evaluate(el => el.matches(':popover-open')), false, `${id}: only one card is open`);
       await page.waitForTimeout(350);
-      await page.screenshot({ path: join(evidence, `${name}-hobby-${id}.png`) });
+      await capture(page, `${name}-hobby-${id}.png`);
       if (id === 'running') { await page.mouse.click(4, 4); assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, 'A click outside closes the card'); previous = null; }
       else if (id === 'hair') { await page.keyboard.press('Escape'); assert.equal(await pop.evaluate(el => el.matches(':popover-open')), false, 'Escape closes the card'); previous = null; }
       else previous = id;
@@ -680,18 +748,13 @@ try {
       }
     }
 
-    // Old page URLs land on their home sections.
-    for (const [path, id] of [['building', 'building'], ['experience', 'experience'], ['about', 'about'], ['bookshelf', 'books']]) {
-      await page.goto(new URL(`${path}/`, base).href);
-      await page.waitForURL(`${base}#${id}`);
-    }
-
-
+    await redirectChecks(page);
     assert.deepEqual(errors, []);
     results.push({ scenario: name, status: 'passed', reveal: animated ? 'on scroll' : 'static', heldBack: heldBack.length, overflow: false, errors });
     await context.close();
-  }
-  for (const [name, options, trigger] of [
+}
+async function intros() {
+  const cases = [
     ['desktop', { viewport: { width: 1440, height: 1000 } }, 'wheel'],
     ['tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true }, 'key'],
     ['phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 'touch'],
@@ -699,7 +762,8 @@ try {
     ['reduced', { viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }, 'wheel'],
     ['no-js', { viewport: { width: 390, height: 844 }, javaScriptEnabled: false }, 'none'],
     ['site-js-blocked', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, 'blocked'],
-  ]) await introChecks(name, options, trigger);
+  ];
+  await runChecks(cases.map(args => () => introChecks(...args)), ci ? 2 : 1);
   // Masthead portrait with a slow site.js: the static image (already loaded) stays hidden until the swap, so it never
   // shows whole and then restarts its draw-in; the draw-in then runs from the start.
   {
@@ -721,6 +785,8 @@ try {
     await context.close();
     results.push({ portrait: 'slow site.js', status: 'passed', hiddenUntilSwap: true });
   }
+}
+async function rails() {
   for (const [label, options, pinned, animated] of [
     ['desktop', { viewport: { width: 1440, height: 1000 } }, true, true],
     ['tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true }, true, true],
@@ -731,15 +797,19 @@ try {
     await railChecks(railContext, label, pinned, animated);
     await railContext.close();
   }
-  for (const [label, options, touch, animated] of [
+}
+function eggCases() {
+  return [
     ['desktop', { viewport: { width: 1440, height: 1000 } }, false, true],
     ['phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, true, true],
     ['reduced-desktop', { viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }, false, false],
-  ]) {
+  ].map(([label, options, touch, animated]) => async () => {
     const eggContext = await browser.newContext(options);
     await eggChecks(eggContext, label, touch, animated);
     await eggContext.close();
-  }
+  });
+}
+async function widths() {
   // A reduced-motion preference set after load still shows every section.
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   await context.addInitScript(skipIntro);
@@ -774,12 +844,31 @@ try {
     assert.deepEqual(r.interests, ['Karate', 'Climbing', 'Running', 'Sewing', 'Fashion', 'Thrifting', 'Cutting hair', 'Board game design'], `${width}px: Other interests lists the hobbies`);
     assert.equal(r.aboutEntries, 0, `${width}px: those entries are no longer under About`);
     await page.evaluate(() => scrollTo(0, 0));
-    await page.screenshot({ path: join(evidence, `width-${width}-top.png`) });
+    await capture(page, `width-${width}-top.png`);
     await page.locator('#interests').scrollIntoViewIfNeeded();
     await page.waitForTimeout(900);
-    await page.screenshot({ path: join(evidence, `width-${width}-interests.png`) });
+    await capture(page, `width-${width}-interests.png`);
     await sized.close();
     results.push({ width, status: 'passed', mark: r.mark });
+  }
+}
+async function runChecks(checks, workers) {
+  async function worker() {
+    for (let check; (check = checks.shift());) await check();
+  }
+  await Promise.all(Array.from({ length: workers }, worker));
+}
+try {
+  // Keep the time-sensitive first visit separate from homepage and book tab startup.
+  const checks = scenarios.map(scenario => () => homeChecks(scenario));
+  if (!ci && !linksOnly) checks.push(intros);
+  if (!linksOnly) checks.push(...eggCases(), rails, widths);
+  if (ci && !linksOnly) {
+    // The static no-JS page needs neither animation sampling nor a second book tab.
+    const staticPage = checks.splice(scenarios.findIndex(({ name }) => name === 'no-js'), 1)[0];
+    await Promise.all([staticPage(), intros().then(() => runChecks(checks, 6))]);
+  } else {
+    await runChecks(checks, ci ? 6 : 1);
   }
   await writeFile(join(evidence, 'results.json'), JSON.stringify(results, null, 2));
   console.log(JSON.stringify(results, null, 2));
