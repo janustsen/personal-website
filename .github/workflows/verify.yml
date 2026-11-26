@@ -2,23 +2,66 @@ name: Verify website
 on:
   push:
     branches: [main]
+    paths-ignore: &documentation
+      - '*.md'
+      - '.agents/**/*.md'
+      - '.claude/skills'
+      - '.openai/hosting.json'
   pull_request:
+    paths-ignore: *documentation
+  merge_group:
 permissions:
   contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   browser:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright-core install --with-deps chromium
-      - run: npm run lint
-      - name: Verify the site in a browser
+      - uses: actions/cache@v4
+        id: dependencies
+        with:
+          path: |
+            node_modules
+            ~/.cache/ms-playwright
+          key: browser-${{ runner.os }}-${{ runner.arch }}-node22-${{ hashFiles('package-lock.json', 'package.json') }}
+      - if: steps.dependencies.outputs.cache-hit != 'true'
         run: |
-          python3 -m http.server 63027 --bind 127.0.0.1 --directory dist > /tmp/janus-site-server.log 2>&1 &
-          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:63027/ > /dev/null && break; sleep 1; done
-          npm test
+          npm ci
+          npx playwright-core install --no-shell chromium
+      - name: Check Chromium system libraries
+        run: |
+          ldd "$(node -p "require('playwright-core').chromium.executablePath()")" > "$RUNNER_TEMP/chromium-libs"
+          if grep -q 'not found' "$RUNNER_TEMP/chromium-libs"; then
+            npx playwright-core install-deps chromium
+          fi
+      - name: Verify website
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          # A single runner shares browser setup and overlaps independent contexts.
+          npm run lint &
+          lint=$!
+          python3 -m http.server 63027 --bind 127.0.0.1 --directory dist >/tmp/janus-site-server.log 2>&1 &
+          server=$!
+          trap 'kill "$server"' EXIT
+          curl --fail --silent --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:63027/ >/dev/null
+          args=(--ci)
+          # Compare the actual PR merge result to its base. Unknown inputs run everything.
+          if [[ "$EVENT_NAME" == pull_request ]] && git diff --quiet --no-renames HEAD^1 HEAD -- . \
+            ':(exclude)dist/assets/janus-tsen-resume.pdf' ':(exclude)dist/about/index.html' \
+            ':(exclude)dist/bookshelf/index.html' ':(exclude)dist/experience/index.html' ':(exclude)dist/building/index.html'; then
+            args+=(--links-only)
+          fi
+          status=0
+          npm test -- "${args[@]}" || status=1
+          wait "$lint" || status=1
+          exit "$status"
