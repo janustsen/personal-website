@@ -9,7 +9,7 @@ description: Launch and verify Janus Tsen's static personal website through its 
 From this repository, start `python3 -u -m http.server 63027 --bind 127.0.0.1 --directory dist` in a retained session. A `Serving HTTP` line is readiness. Reuse an owned server. If the port belongs to another task, choose an unused port with `0`, read the printed URL, and set `SITE_URL` for the drive. Never stop other tasks' processes.
 
 ## Doctor
-Run `curl --fail -I http://127.0.0.1:63027/` (substitute the actual URL). Expect HTTP 200. Confirm the page title is `Janus Tsen` before driving. No credentials, database, or live submissions are needed.
+Run `curl --fail -I http://127.0.0.1:63027/` (substitute the actual URL). Expect HTTP 200. Confirm the page title is `Janus Tsen | Co-founder of Cadelen` before driving. No credentials, database, or live submissions are needed.
 
 ## Drive
 Run `node verify.mjs`. This launches a separate headless Chrome process and closes it itself. It needs an installed `playwright-core`; reuse a bundled installation with `PLAYWRIGHT_CORE_PATH=/absolute/path/to/playwright-core/index.mjs`. Otherwise install the locked development dependencies with `npm ci`. On macOS, set `CHROME_PATH` if Chrome is not at the default location. On other platforms the script uses Playwright’s Chromium; install it with `npx playwright-core install chromium` or set `CHROME_PATH` to an existing browser. `SITE_URL` defaults to the launch URL. `EVIDENCE_DIR` defaults to `work/verification`.
