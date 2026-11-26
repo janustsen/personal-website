@@ -263,8 +263,18 @@ async function eggChecks(context, name, touch, animated) {
   // Portrait: a tap blinks, the tie swings, the pocket square peeks out, and the seventh face tap adds a flower.
   await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
   await page.waitForTimeout(500);
+  // Sample the 140ms blink in the input event, before the touch driver returns.
+  await page.evaluate(() => {
+    const lids = document.querySelector('.egg-lids');
+    addEventListener('pointerup', () => {
+      const before = lids.getAnimations();
+      addEventListener('pointerup', () => {
+        window.tappedBlink = lids.getAnimations().filter(animation => !before.includes(animation)).length;
+      }, { once: true });
+    }, { capture: true, once: true });
+  });
   await tap(M, 600, 520);
-  assert.ok(await page.evaluate(() => document.querySelector('.egg-lids').getAnimations().length === 1), `${name}: blink`);
+  assert.ok(await page.evaluate(() => window.tappedBlink === 1), `${name}: blink`);
   await shot('portrait-blink', '.mark');
   await page.waitForTimeout(300);
   await tap(M, 600, 1000);
@@ -405,7 +415,9 @@ async function bookChecks(page, name, animated, books) {
       .catch(() => { throw new Error(`${id}: book never spun into the preview`); });
     else { await page.waitForTimeout(100); assert.equal(await spins(), false, `${id}: no spin without motion`); }
     assert.equal(motionState.ink, animated || name === 'no-js' ? 'cover-ink' : 'none', `${id}: illustration draws in only with motion`);
-    await page.waitForFunction(id => [...document.querySelectorAll(`#book-${id} .cover-art path`)]
+    // A JS-disabled document animates CSS but never calls the frame-based poll.
+    if (name === 'no-js') await page.waitForTimeout(2000);
+    else await page.waitForFunction(id => [...document.querySelectorAll(`#book-${id} .cover-art path`)]
       .every(path => parseFloat(getComputedStyle(path).strokeDashoffset || 0) === 0), id,
     { timeout: name === 'reduced' ? 300 : 2000 });
     assert.ok(await pop.locator('.cover').isVisible() && (await pop.locator('.cover-title').textContent()) === (await spine.textContent()), `${id}: cover drawing shows the title`);
@@ -735,7 +747,7 @@ async function homeChecks(scenario) {
     await context.close();
 }
 async function intros() {
-  for (const [name, options, trigger] of [
+  const cases = [
     ['desktop', { viewport: { width: 1440, height: 1000 } }, 'wheel'],
     ['tablet', { viewport: { width: 820, height: 1180 }, hasTouch: true }, 'key'],
     ['phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, 'touch'],
@@ -743,7 +755,8 @@ async function intros() {
     ['reduced', { viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }, 'wheel'],
     ['no-js', { viewport: { width: 390, height: 844 }, javaScriptEnabled: false }, 'none'],
     ['site-js-blocked', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, 'blocked'],
-  ]) await introChecks(name, options, trigger);
+  ];
+  await runChecks(cases.map(args => () => introChecks(...args)), ci ? 2 : 1);
   // Masthead portrait with a slow site.js: the static image (already loaded) stays hidden until the swap, so it never
   // shows whole and then restarts its draw-in; the draw-in then runs from the start.
   {
@@ -778,16 +791,16 @@ async function rails() {
     await railContext.close();
   }
 }
-async function eggs() {
-  for (const [label, options, touch, animated] of [
+function eggCases() {
+  return [
     ['desktop', { viewport: { width: 1440, height: 1000 } }, false, true],
     ['phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, true, true],
     ['reduced-desktop', { viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' }, false, false],
-  ]) {
+  ].map(([label, options, touch, animated]) => async () => {
     const eggContext = await browser.newContext(options);
     await eggChecks(eggContext, label, touch, animated);
     await eggContext.close();
-  }
+  });
 }
 async function widths() {
   // A reduced-motion preference set after load still shows every section.
@@ -832,17 +845,19 @@ async function widths() {
     results.push({ width, status: 'passed', mark: r.mark });
   }
 }
-try {
-  // The first-visit checks sample a real three-second intro. Keep Chromium startup
-  // for other contexts out of that measurement.
-  if (ci && !linksOnly) await intros();
-  const checks = scenarios.map(scenario => () => homeChecks(scenario));
-  if (!ci && !linksOnly) checks.push(intros);
-  if (!linksOnly) checks.push(rails, eggs, widths);
+async function runChecks(checks, workers) {
   async function worker() {
     for (let check; (check = checks.shift());) await check();
   }
-  await Promise.all(Array.from({ length: ci ? 4 : 1 }, worker));
+  await Promise.all(Array.from({ length: workers }, worker));
+}
+try {
+  // Keep the time-sensitive first visit separate from homepage and book tab startup.
+  if (ci && !linksOnly) await intros();
+  const checks = scenarios.map(scenario => () => homeChecks(scenario));
+  if (!ci && !linksOnly) checks.push(intros);
+  if (!linksOnly) checks.push(...eggCases(), rails, widths);
+  await runChecks(checks, ci ? 6 : 1);
   await writeFile(join(evidence, 'results.json'), JSON.stringify(results, null, 2));
   console.log(JSON.stringify(results, null, 2));
 } finally { await browser.close(); }
