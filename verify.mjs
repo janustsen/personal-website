@@ -564,16 +564,18 @@ async function homeChecks(scenario) {
     const ids = await page.locator('.spine:visible').evaluateAll(els => els.map(el => el.getAttribute('popovertarget').slice(5)));
     assert.equal(ids.length, 28);
     const books = [...ids.entries()];
-    if (ci) {
+    if (ci && name !== 'no-js') {
       // Each tab has its own open popover and keyboard focus. Exercise both close methods
       // in each tab while the other tab's real cover animation runs.
-      const otherShelf = await context.newPage();
+      const shelfContext = await browser.newContext(options);
+      await shelfContext.addInitScript(skipIntro);
+      const otherShelf = await shelfContext.newPage();
       watchErrors(otherShelf);
       await otherShelf.goto(new URL('#books', base).href);
       const middle = Math.ceil(books.length / 2);
       await Promise.all([bookChecks(page, name, animated, books.slice(0, middle)),
         bookChecks(otherShelf, name, animated, books.slice(middle))]);
-      await otherShelf.close();
+      await shelfContext.close();
     } else {
       await bookChecks(page, name, animated, books);
     }
@@ -853,11 +855,16 @@ async function runChecks(checks, workers) {
 }
 try {
   // Keep the time-sensitive first visit separate from homepage and book tab startup.
-  if (ci && !linksOnly) await intros();
   const checks = scenarios.map(scenario => () => homeChecks(scenario));
   if (!ci && !linksOnly) checks.push(intros);
   if (!linksOnly) checks.push(...eggCases(), rails, widths);
-  await runChecks(checks, ci ? 6 : 1);
+  if (ci && !linksOnly) {
+    // The static no-JS page needs neither animation sampling nor a second book tab.
+    const staticPage = checks.splice(scenarios.findIndex(({ name }) => name === 'no-js'), 1)[0];
+    await Promise.all([staticPage(), intros().then(() => runChecks(checks, 6))]);
+  } else {
+    await runChecks(checks, ci ? 6 : 1);
+  }
   await writeFile(join(evidence, 'results.json'), JSON.stringify(results, null, 2));
   console.log(JSON.stringify(results, null, 2));
 } finally { await browser.close(); }
