@@ -7,4 +7,4 @@ Cadelen and Trus disclosures under Building; professional entries under Experien
 The hidden entry (B1, a Books spine) and how to publish or cut them are documented in [README.md](../../../../README.md#design-and-sources).
 
 ## User path and drive
-Open the details under either venture ("More on Cadelen Studio" or "How Trus worked"). `node verify.mjs` opens `#cadelen summary` and `#trus summary`, confirms native open state, and closes each with Enter. These controls must also work without JavaScript. It also checks that only the held-back entry carries `data-draft`, that they are hidden, and that no draft tag shows anywhere.
+Open the details under either venture ("More on Cadelen" or "How Trus worked"). `node verify.mjs` opens `#cadelen summary` and `#trus summary`, confirms native open state, and closes each with Enter. These controls must also work without JavaScript. It also checks that only the held-back entry carries `data-draft`, that they are hidden, and that no draft tag shows anywhere.
